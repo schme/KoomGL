@@ -4,6 +4,14 @@
 #include "types.h"
 #include "memorystack.h"
 
+#if BUILD_INTERNAL
+// Debug versions only!
+void *ReadFile( const char* filename);
+void FreeMemory( void *Memory);
+#endif
+
+
+
 struct GameInput {
     real64 deltaTime;
     uint64 frame;
@@ -15,6 +23,8 @@ struct GameInput {
     bool32 KEY_LEFT;
     bool32 KEY_DOWN;
     bool32 KEY_RIGHT;
+    bool32 KEY_ESC;
+    bool32 KEY_SPACE;
 };
 
 void gameInit( MemoryStack *);

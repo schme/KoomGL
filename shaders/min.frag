@@ -1,7 +1,8 @@
 #version 440
-out vec4 color;
+
+uniform float globalTime;
+
 void main()
 {
-    vec2 uv = gl_FragCoord.xy; // not really uv
-    color = vec4( sin(uv.x/1000), sin(uv.y/1000), sin(uv/10));
+    gl_FragColor = vec4(0.2, 0.2, 0.2, 1.0);
 }

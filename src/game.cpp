@@ -1,14 +1,19 @@
 #include "game.h"
-#include "kms_glutils.h"
-
+#include "ks_glutils.h"
+#include "ks_objprs.h"
 
 static MemoryStack *memory;
 
-static GLuint shaderProgram = 0;
-static GLuint vao = 0;
-static GLuint vertexBufferObject = 0;
+static real64 globalTime = 0.0f; // in seconds
 
-real32 screen_vertices[] = 
+static GLuint shaderPrograms[10];
+static GLuint vao;
+static GLuint vertexBufferObject;
+// uniforms
+static GLuint globalTimeUnif;
+
+static Mesh *cube;
+real32 background_vertices[] = 
 {
 -1.0f, -1.0f, 1.0f,
 1.0f, -1.0f, 1.0f,
@@ -19,21 +24,24 @@ real32 screen_vertices[] =
 -1.0f, -1.0f, 1.0f,
 };
 
+void handleInput(GameInput input)
+{
+
+}
+
 void renderInit()
 {
 
-    std::vector<GLint> shaders;
-    shaders.push_back( loadShader( SHADERPATH("min.vert"), GL_VERTEX_SHADER));
-    shaders.push_back( loadShader( SHADERPATH("min.frag"), GL_FRAGMENT_SHADER));
+    shaderPrograms[0] = createProgram(SHADERPATH("min.vert"), SHADERPATH("min.frag"));
+    assert(shaderPrograms[0]);
 
-    shaderProgram = createProgram( shaders);
-    assert(shaderProgram);
+    globalTimeUnif = glGetUniformLocation( shaderPrograms[0], "globalTime");
 
     glClearColor( 0.0f, 0.0f, 0.0f, 1.0f);
 
     glGenBuffers(1, &vertexBufferObject);
     glBindBuffer( GL_ARRAY_BUFFER, vertexBufferObject);
-    glBufferData( GL_ARRAY_BUFFER, sizeof( screen_vertices), screen_vertices, GL_STATIC_DRAW);
+    glBufferData( GL_ARRAY_BUFFER, sizeof( background_vertices), background_vertices, GL_STATIC_DRAW);
     glBindBuffer( GL_ARRAY_BUFFER, 0);
     
     glGenVertexArrays(1, &vao);
@@ -54,11 +62,12 @@ void renderInit()
 
 }
 
-void draw()
+void draw(real64 globalTime)
 {
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glUseProgram( shaderProgram);
+    glUseProgram( shaderPrograms[0]);
 
+    glUniform1f( globalTimeUnif, globalTime);
     glBindBuffer( GL_ARRAY_BUFFER, vertexBufferObject);
 
     glEnableVertexAttribArray(0);
@@ -74,13 +83,18 @@ void draw()
 void gameInit(MemoryStack *ms)
 {
     memory = ms;
+
+    cube = (Mesh*)popMemoryStack( memory, sizeof(Mesh));
+    parseObj( "assets/cube.obj", cube);
+
     renderInit();
 }
 
 
 void gameUpdateAndRender( GameInput input)
 {
-    draw();
+    draw(globalTime);
+    globalTime += (input.deltaTime / 1000.0f);
 }
 
 void resize( int w, int h) {

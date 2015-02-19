@@ -1,6 +1,5 @@
 
 #include "win_platform.h"
-#include "types.h"
 #include "game.h"
 
 #include <windows.h>
@@ -20,6 +19,7 @@
 
 const int32 windowWidth = 1440;
 const int32 windowHeight = 900;
+const uint64 memoryStackSize = 1024*1024;
 
 struct Win_WindowDimensions 
 {
@@ -27,7 +27,6 @@ struct Win_WindowDimensions
     int32 height;
 };
 
-const uint64 memoryStackSize = 1024*1024;
 
 static HDC DeviceContext;
 static HGLRC RenderingContext;
@@ -35,12 +34,60 @@ static bool32 globalPlaying;
 static int64 perfCountFrequency;
 static uint64 frame;
 
+
+static inline uint32
+SafeTruncateUint32( uint64 i)
+{
+    assert( i <= 0xffffffff);
+    return (uint32)i;
+}
+
+
+// DEBUG ONLY
 void
-Win_FreeMemory( void *Memory) {
-    if( Memory) {
-        VirtualFree( Memory, 0, MEM_RELEASE);
+FreeMemory( void *memory) {
+    if( memory) {
+        free( memory);
     }
 }
+
+
+/* Using malloc instead of VirtualAlloc because malloc
+ * is better suited for small allocations
+ */
+// DEBUG ONLY
+void* 
+ReadFile(const char *filename, uint32* content_size)
+{
+    void *result = 0;
+    HANDLE fileHandle = CreateFileA(
+        filename, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0 );
+
+    LARGE_INTEGER fileSize;
+    if( GetFileSizeEx( fileHandle, &fileSize)) {
+
+        uint32 fileSize32 = SafeTruncateUint32( fileSize.QuadPart);
+        result = malloc(fileSize32);
+        if( result) {
+            DWORD bytesRead;
+            if( ReadFile( fileHandle, result, fileSize32, &bytesRead, 0) &&
+                (fileSize32 == bytesRead)) 
+            {
+                *content_size = fileSize32;
+                printf("file %s read successfully\n", filename);
+
+            } else {
+                FreeMemory( result);
+                result = 0;
+                *content_size = 0;
+            }
+        }
+        CloseHandle( fileHandle);
+    }
+
+    return result;        
+}
+
 
 
 Win_WindowDimensions
@@ -56,7 +103,7 @@ Win_GetWindowDimensions( HWND Window) {
 }
 
 
-int
+static int
 Win_CreateGLContext()
 {
     PIXELFORMATDESCRIPTOR pfd = {
@@ -97,6 +144,7 @@ Win_CreateGLContext()
             WGL_CONTEXT_MINOR_VERSION_ARB, 4,
             WGL_CONTEXT_FLAGS_ARB, 0,
             0  
+
     };
 
     if( wglewIsSupported( "WGL_ARB_create_context") == 1)
@@ -252,32 +300,22 @@ Win_HandleMessages(GameInput *input) {
                             //OutputDebugStringA("E \n");
                         } break;
                         case VK_UP: {
-
                             input->KEY_UP = 1;
-                            //OutputDebugStringA("UP \n");
                         } break;
                         case VK_LEFT: {
-
                             input->KEY_LEFT = 1;
-                            //OutputDebugStringA("LEFT \n");
                         } break;
                         case VK_DOWN: {
-
                             input->KEY_DOWN = 1;
-                            //OutputDebugStringA("DOWN \n");
                         } break;
                         case VK_RIGHT: {
-
                             input->KEY_RIGHT = 1;
-                            //OutputDebugStringA("RIGHT \n");
                         } break;
                         case VK_SPACE: {
-                            
-                            OutputDebugStringA("SPACE \n");
+                            input->KEY_SPACE = 1;
                         } break;
                         case VK_ESCAPE: {
-
-                            //globalPlaying = false;
+                            input->KEY_ESC = 1;  
                         } break;
                     } // VKCode
                 } //wasDown != isDown
@@ -439,7 +477,7 @@ CALLBACK WinMain(   HINSTANCE Instance,
         _snprintf_s( timeStrBuffer, sizeof( timeStrBuffer), "%.02fms/f, %.02fmc/f, frame %llu \n", msPerFrame, MCPF, frame);
 
         OutputDebugStringA( timeStrBuffer);
-        if( frame % 20 == 0) {
+        if( !(frame % 20)) {
             SetWindowText( Window, timeStrBuffer);
         }
         

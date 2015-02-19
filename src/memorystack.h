@@ -11,6 +11,7 @@ struct MemoryStack {
     void *top;
 };
 
+/** initialises to zero before handing it out */
 void* popMemoryStack(MemoryStack* memory, uint64 bytes);
 void pushMemoryStack(MemoryStack* memory, uint64 bytes);
 
