@@ -2,6 +2,8 @@
 #include "ks_glutils.h"
 #include "ks_objprs.h"
 
+#include <stdio.h>
+
 static MemoryStack *memory;
 
 static real64 globalTime = 0.0f; // in seconds
@@ -12,7 +14,9 @@ static GLuint vertexBufferObject;
 // uniforms
 static GLuint globalTimeUnif;
 
+static Camera camera;
 static Mesh *cube;
+
 real32 background_vertices[] = 
 {
 -1.0f, -1.0f, 1.0f,
@@ -24,9 +28,49 @@ real32 background_vertices[] =
 -1.0f, -1.0f, 1.0f,
 };
 
+void changeInputState( GameInput *state, GameInput input) {
+
+   if( input.KEY_W ) {
+        (*state).KEY_W = !(*state).KEY_W;
+    } 
+    if( input.KEY_S) {
+        (*state).KEY_S = !(*state).KEY_S;
+    } 
+    if( input.KEY_A) {
+        (*state).KEY_A = !(*state).KEY_A;
+    } 
+    if( input.KEY_D) {
+        (*state).KEY_D = !(*state).KEY_D;
+    } 
+    if( input.KEY_ESC) {
+        (*state).KEY_ESC = !(*state).KEY_ESC;
+    } 
+    if( input.KEY_SPACE) {
+        (*state).KEY_SPACE = !(*state).KEY_SPACE;
+    } 
+
+    if( input.MouseButtons[0]) {
+        (*state).MouseButtons[0] = !(*state).MouseButtons[0];
+    } 
+    if( input.MouseButtons[1]) {
+        (*state).MouseButtons[1] = !(*state).MouseButtons[1];
+    } 
+    if( input.MouseButtons[2]) {
+        (*state).MouseButtons[2] = !(*state).MouseButtons[2];
+    } 
+    if( input.MouseButtons[3]) {
+        (*state).MouseButtons[3] = !(*state).MouseButtons[3];
+    } 
+    if( input.MouseButtons[4]) {
+        (*state).MouseButtons[4] = !(*state).MouseButtons[4];
+    } 
+}
+
+
 void handleInput(GameInput input)
 {
-
+    static GameInput state;
+    changeInputState( &state, input);
 }
 
 void renderInit()
@@ -84,6 +128,8 @@ void gameInit(MemoryStack *ms)
 {
     memory = ms;
 
+    camera.pos = glm::vec3( 3, 15, 2);
+
     cube = (Mesh*)popMemoryStack( memory, sizeof(Mesh));
     parseObj( "assets/cube.obj", cube);
 
@@ -93,6 +139,7 @@ void gameInit(MemoryStack *ms)
 
 void gameUpdateAndRender( GameInput input)
 {
+    handleInput( input);
     draw(globalTime);
     globalTime += (input.deltaTime / 1000.0f);
 }

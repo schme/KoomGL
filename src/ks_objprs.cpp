@@ -36,7 +36,7 @@ parseObj( const char *filename, Mesh *m)
 
         } else if( strcmp( buffer, "o") == 0) {
             //TODO(kasper): Buffer overflow
-            char name[128];
+            char name[32];
             fscanf( file, "%s\n", name);
             strncpy( m->name, name, strlen( name));
         }

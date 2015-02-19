@@ -263,7 +263,41 @@ Win_HandleMessages(GameInput *input) {
             case WM_QUIT: {
                 globalPlaying = false;
             } break;
-                          
+
+            case WM_MBUTTONUP:
+            case WM_MBUTTONDOWN:
+            case WM_RBUTTONUP:
+            case WM_RBUTTONDOWN:
+            case WM_XBUTTONUP:
+            case WM_XBUTTONDOWN:
+            case WM_LBUTTONUP:
+            case WM_LBUTTONDOWN: {
+
+                uint32 VKCode = (uint32)Message.wParam;
+                bool32 wasDown = ((Message.lParam & (1 << 30)) != 0);
+                bool32 isDown = ((Message.lParam & (1 << 31)) == 0);
+                if( wasDown != isDown) {
+
+                    switch (VKCode) {
+                        case MK_LBUTTON: {
+                            input->MouseButtons[0] = 1;
+                        } break;
+                        case MK_RBUTTON: {
+                            input->MouseButtons[1] = 1;
+                        } break;
+                        case MK_MBUTTON: {
+                            input->MouseButtons[2] = 1;
+                        } break;
+                        case MK_XBUTTON1: {
+                            input->MouseButtons[3] = 1;
+                        } break;
+                        case MK_XBUTTON2: {
+                            input->MouseButtons[4] = 1;
+                        } break;
+                    }
+                }
+            } break;
+
             case WM_SYSKEYUP:
             case WM_KEYUP:
             case WM_SYSKEYDOWN: 
@@ -424,6 +458,15 @@ CALLBACK WinMain(   HINSTANCE Instance,
 
         GameInput input = {};
         Win_HandleMessages(&input);
+
+        POINT MouseP;
+        GetCursorPos( &MouseP);
+        ScreenToClient( Window, &MouseP);
+        input.MouseX = MouseP.x;
+        input.MouseY = MouseP.y;
+        //TODO(kasper): Scroll wheel thing
+        input.MouseZ = 0;
+
         input.frame = frame;
         input.deltaTime = msPerFrame;
 

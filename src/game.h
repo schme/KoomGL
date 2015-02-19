@@ -4,12 +4,17 @@
 #include "types.h"
 #include "memorystack.h"
 
+#include <glm/vec3.hpp>
+
 #if BUILD_INTERNAL
 // Debug versions only!
 void *ReadFile( const char* filename);
 void FreeMemory( void *Memory);
 #endif
 
+struct Camera {
+    glm::vec3 pos;
+};
 
 
 struct GameInput {
@@ -25,6 +30,18 @@ struct GameInput {
     bool32 KEY_RIGHT;
     bool32 KEY_ESC;
     bool32 KEY_SPACE;
+
+    /**
+     * MB 0: LBUTTON
+     * MB 1: RBUTTON
+     * MB 2: MBUTTON
+     * MB 3: XBUTTON1
+     * MB 4: XBUTTON4
+     */
+    bool32 MouseButtons[5];
+    int32 MouseX; 
+    int32 MouseY; 
+    int32 MouseZ;
 };
 
 void gameInit( MemoryStack *);

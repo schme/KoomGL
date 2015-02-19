@@ -9,7 +9,7 @@ struct Mesh {
     std::vector<glm::vec3> vertices;
     std::vector<glm::vec3> vertexNormals;
     std::vector<uint32> faceVertexIndices;
-    char *name;
+    char name[32];
 };
 
 
