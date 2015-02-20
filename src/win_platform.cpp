@@ -21,18 +21,19 @@ const int32 windowWidth = 1440;
 const int32 windowHeight = 900;
 const uint64 memoryStackSize = 1024*1024;
 
+
+static HDC DeviceContext;
+static HGLRC RenderingContext;
+static WINDOWPLACEMENT windowPlacement = { sizeof( windowPlacement) };
+static bool32 globalPlaying;
+static int64 perfCountFrequency;
+static uint64 frame;
+
 struct Win_WindowDimensions 
 {
     int32 width;
     int32 height;
 };
-
-
-static HDC DeviceContext;
-static HGLRC RenderingContext;
-static bool32 globalPlaying;
-static int64 perfCountFrequency;
-static uint64 frame;
 
 
 static inline uint32
@@ -88,6 +89,34 @@ ReadFile(const char *filename, uint32* content_size)
     return result;        
 }
 
+
+void
+Win_ToggleFullscreen( HWND hwnd)
+{
+    DWORD dwStyle = GetWindowLong( hwnd, GWL_STYLE);
+    if( dwStyle & WS_OVERLAPPEDWINDOW) {
+        MONITORINFO mi = { sizeof(mi) };
+        if( GetWindowPlacement( hwnd, &windowPlacement) &&
+            GetMonitorInfo( MonitorFromWindow( hwnd,
+                    MONITOR_DEFAULTTOPRIMARY), &mi)) 
+            {
+            SetWindowLong( hwnd, GWL_STYLE,
+                    dwStyle & ~WS_OVERLAPPEDWINDOW);
+            SetWindowPos( hwnd, HWND_TOP,
+                   mi.rcMonitor.left, mi.rcMonitor.top,
+                   mi.rcMonitor.right - mi.rcMonitor.left,
+                   mi.rcMonitor.bottom - mi.rcMonitor.top,
+                   SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+            }
+     } else {
+       SetWindowLong(hwnd, GWL_STYLE,
+                     dwStyle | WS_OVERLAPPEDWINDOW);
+       SetWindowPlacement(hwnd, &windowPlacement);
+       SetWindowPos(hwnd, NULL, 0, 0, 0, 0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+                    SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+     }
+}
 
 
 Win_WindowDimensions
@@ -353,10 +382,17 @@ Win_HandleMessages(GameInput *input) {
                         } break;
                     } // VKCode
                 } //wasDown != isDown
+                if( isDown) {
 
-                bool32 AltKeyWasDown = (Message.lParam & (1 << 29));
-                if(( VKCode == VK_F4) && AltKeyWasDown) {
-                    globalPlaying = false;
+                    bool32 AltKeyWasDown = (Message.lParam & (1 << 29));
+                    if(( VKCode == VK_F4) && AltKeyWasDown) {
+                        globalPlaying = false;
+                    }
+                    if(( VKCode == VK_RETURN) && AltKeyWasDown) {
+                        if( Message.hwnd) {
+                            Win_ToggleFullscreen( Message.hwnd);
+                        }
+                    }
                 }
 
             } break;
@@ -405,6 +441,7 @@ CALLBACK WinMain(   HINSTANCE Instance,
     WindowClass.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
     WindowClass.lpfnWndProc = Win_WindowProc;
     WindowClass.hInstance = Instance;
+    WindowClass.hCursor = LoadCursor(0, IDC_CROSS);
     //WindowClass.hIcon;
     WindowClass.lpszClassName = "KoomGLWindowClass";
 
