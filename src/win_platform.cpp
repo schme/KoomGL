@@ -17,30 +17,30 @@
 #endif
 
 
-const int32 windowWidth = 1440;
-const int32 windowHeight = 900;
-const uint64 memoryStackSize = 1024*1024;
+const i32 windowWidth = 1024;
+const i32 windowHeight = 768;
+const u64 memoryStackSize = 50*1024*1024;
 
 
 static HDC DeviceContext;
 static HGLRC RenderingContext;
 static WINDOWPLACEMENT windowPlacement = { sizeof( windowPlacement) };
-static bool32 globalPlaying;
-static int64 perfCountFrequency;
-static uint64 frame;
+static b32 globalPlaying;
+static i64 perfCountFrequency;
+static u64 frame;
 
-struct Win_WindowDimensions 
+struct Win_WindowDimensions
 {
-    int32 width;
-    int32 height;
+    i32 width;
+    i32 height;
 };
 
 
-static inline uint32
-SafeTruncateUint32( uint64 i)
+static inline u32
+SafeTruncateU32( u64 i)
 {
     assert( i <= 0xffffffff);
-    return (uint32)i;
+    return (u32)i;
 }
 
 
@@ -57,8 +57,8 @@ FreeMemory( void *memory) {
  * is better suited for small allocations
  */
 // DEBUG ONLY
-void* 
-ReadFile(const char *filename, uint32* content_size)
+void*
+ReadFile(const char *filename, u32* content_size)
 {
     void *result = 0;
     HANDLE fileHandle = CreateFileA(
@@ -67,12 +67,12 @@ ReadFile(const char *filename, uint32* content_size)
     LARGE_INTEGER fileSize;
     if( GetFileSizeEx( fileHandle, &fileSize)) {
 
-        uint32 fileSize32 = SafeTruncateUint32( fileSize.QuadPart);
+        u32 fileSize32 = SafeTruncateU32( fileSize.QuadPart);
         result = malloc(fileSize32);
         if( result) {
             DWORD bytesRead;
             if( ReadFile( fileHandle, result, fileSize32, &bytesRead, 0) &&
-                (fileSize32 == bytesRead)) 
+                (fileSize32 == bytesRead))
             {
                 *content_size = fileSize32;
                 printf("file %s read successfully\n", filename);
@@ -86,7 +86,7 @@ ReadFile(const char *filename, uint32* content_size)
         CloseHandle( fileHandle);
     }
 
-    return result;        
+    return result;
 }
 
 
@@ -98,7 +98,7 @@ Win_ToggleFullscreen( HWND hwnd)
         MONITORINFO mi = { sizeof(mi) };
         if( GetWindowPlacement( hwnd, &windowPlacement) &&
             GetMonitorInfo( MonitorFromWindow( hwnd,
-                    MONITOR_DEFAULTTOPRIMARY), &mi)) 
+                    MONITOR_DEFAULTTOPRIMARY), &mi))
             {
             SetWindowLong( hwnd, GWL_STYLE,
                     dwStyle & ~WS_OVERLAPPEDWINDOW);
@@ -172,7 +172,7 @@ Win_CreateGLContext()
             WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
             WGL_CONTEXT_MINOR_VERSION_ARB, 4,
             WGL_CONTEXT_FLAGS_ARB, 0,
-            0  
+            0
 
     };
 
@@ -195,7 +195,7 @@ Win_CreateGLContext()
         return 0;
     }
 
-    int OpenGLVersion[2];
+    i32 OpenGLVersion[2];
     glGetIntegerv( GL_MAJOR_VERSION, &OpenGLVersion[0]);
     glGetIntegerv( GL_MINOR_VERSION, &OpenGLVersion[1]);
 
@@ -222,16 +222,16 @@ Win_GetWallClock() {
 }
 
 
-inline real32
+inline r32
 Win_GetSecondsElapsed( LARGE_INTEGER Start, LARGE_INTEGER End)
 {
-    float Result = ((float)(End.QuadPart - Start.QuadPart) /
-                    (float)perfCountFrequency);
+    float Result = ((r32)(End.QuadPart - Start.QuadPart) /
+                    (r32)perfCountFrequency);
     return Result;
 }
 
 
-LRESULT CALLBACK 
+LRESULT CALLBACK
 Win_WindowProc(  HWND Window,
                   UINT Message,
                   WPARAM wParam,
@@ -262,12 +262,12 @@ Win_WindowProc(  HWND Window,
             OutputDebugStringA( "WM_ACTIVATEAPP\n");
         } break;
         case WM_CLOSE: {
-            
+
             OutputDebugStringA("WM_CLOSE\n");
             globalPlaying = false;
             wglMakeCurrent( NULL, NULL);
             wglDeleteContext( RenderingContext);
-            ReleaseDC( Window, DeviceContext); 
+            ReleaseDC( Window, DeviceContext);
         } break;
         case WM_DESTROY: {
 
@@ -302,9 +302,9 @@ Win_HandleMessages(GameInput *input) {
             case WM_LBUTTONUP:
             case WM_LBUTTONDOWN: {
 
-                uint32 VKCode = (uint32)Message.wParam;
-                bool32 wasDown = ((Message.lParam & (1 << 30)) != 0);
-                bool32 isDown = ((Message.lParam & (1 << 31)) == 0);
+                u32 VKCode = (u32)Message.wParam;
+                b32 wasDown = ((Message.lParam & (1 << 30)) != 0);
+                b32 isDown = ((Message.lParam & (1 << 31)) == 0);
                 if( wasDown != isDown) {
 
                     switch (VKCode) {
@@ -329,15 +329,15 @@ Win_HandleMessages(GameInput *input) {
 
             case WM_SYSKEYUP:
             case WM_KEYUP:
-            case WM_SYSKEYDOWN: 
+            case WM_SYSKEYDOWN:
             case WM_KEYDOWN: {
 
-                uint32 VKCode = (uint32)Message.wParam;
-                bool32 wasDown = ((Message.lParam & (1 << 30)) != 0);
-                bool32 isDown = ((Message.lParam & (1 << 31)) == 0);
+                u32 VKCode = (u32)Message.wParam;
+                b32 wasDown = ((Message.lParam & (1 << 30)) != 0);
+                b32 isDown = ((Message.lParam & (1 << 31)) == 0);
                 if( wasDown != isDown) {
 
-                    switch (VKCode) { 
+                    switch (VKCode) {
                         case 'W': {
                             input->KEY_W = 1;
                             //OutputDebugStringA("W \n");
@@ -378,13 +378,14 @@ Win_HandleMessages(GameInput *input) {
                             input->KEY_SPACE = 1;
                         } break;
                         case VK_ESCAPE: {
-                            input->KEY_ESC = 1;  
+                            input->KEY_ESC = 1;
+                            globalPlaying = false;
                         } break;
                     } // VKCode
                 } //wasDown != isDown
                 if( isDown) {
 
-                    bool32 AltKeyWasDown = (Message.lParam & (1 << 29));
+                    b32 AltKeyWasDown = (Message.lParam & (1 << 29));
                     if(( VKCode == VK_F4) && AltKeyWasDown) {
                         globalPlaying = false;
                     }
@@ -396,7 +397,7 @@ Win_HandleMessages(GameInput *input) {
                 }
 
             } break;
-    
+
         default: {
             TranslateMessage( &Message);
             DispatchMessageA( &Message);
@@ -407,10 +408,10 @@ Win_HandleMessages(GameInput *input) {
 }
 
 
-int 
-CALLBACK WinMain(   HINSTANCE Instance, 
+int
+CALLBACK WinMain(   HINSTANCE Instance,
                     HINSTANCE PrevInstance,
-                    LPSTR CmdLine, 
+                    LPSTR CmdLine,
                     int ShowCommand )
 {
 
@@ -419,7 +420,7 @@ CALLBACK WinMain(   HINSTANCE Instance,
         assert(!"AllocConsole() failed");
     }
 
-    int winStdOutFileDesc = _open_osfhandle((intptr_t)GetStdHandle( STD_OUTPUT_HANDLE), _O_TEXT);
+    i32 winStdOutFileDesc = _open_osfhandle((intptr_t)GetStdHandle( STD_OUTPUT_HANDLE), _O_TEXT);
     FILE *fpout = _fdopen( winStdOutFileDesc, "w");
     *stdout = *fpout;
     setvbuf( stdout, NULL, _IONBF, 0);
@@ -431,10 +432,10 @@ CALLBACK WinMain(   HINSTANCE Instance,
     QueryPerformanceFrequency( &PerfCountFrequencyResult);
     perfCountFrequency = PerfCountFrequencyResult.QuadPart;
 
-    bool32 sleepIsGranular = (timeBeginPeriod( 1) == TIMERR_NOERROR);
-    
+    b32 sleepIsGranular = (timeBeginPeriod( 1) == TIMERR_NOERROR);
+
 #define GameUpdateHz 60
-    float targetSecondsPerFrame = 1.0f / (float)GameUpdateHz; 
+    r32 targetSecondsPerFrame = 1.0f / (float)GameUpdateHz;
 
     // WindowClass
     WNDCLASSA WindowClass = {};
@@ -454,8 +455,8 @@ CALLBACK WinMain(   HINSTANCE Instance,
         return 0;
     }
 
-    HWND Window = 
-            CreateWindowExA( 
+    HWND Window =
+            CreateWindowExA(
                     0,
                     WindowClass.lpszClassName,
                     "KoomGL",
@@ -474,8 +475,8 @@ CALLBACK WinMain(   HINSTANCE Instance,
 
     // Timing
     LARGE_INTEGER LastCounter = Win_GetWallClock();
-    uint64 LastCycleCount = __rdtsc();
-    real64 msPerFrame = 0.0;
+    u64 LastCycleCount = __rdtsc();
+    r64 msPerFrame = 0.0f;
 
     MemoryStack gameMemory = {};
     gameMemory.stackSize = memoryStackSize;
@@ -511,8 +512,8 @@ CALLBACK WinMain(   HINSTANCE Instance,
 
         // Timing
         LARGE_INTEGER workCounter = Win_GetWallClock();
-        float workSecondElapsed = Win_GetSecondsElapsed( LastCounter, workCounter);
-        float secondsElapsedForFrame = workSecondElapsed;
+        r32 workSecondElapsed = Win_GetSecondsElapsed( LastCounter, workCounter);
+        r32 secondsElapsedForFrame = workSecondElapsed;
 
 
         if( secondsElapsedForFrame < targetSecondsPerFrame )
@@ -531,36 +532,36 @@ CALLBACK WinMain(   HINSTANCE Instance,
 
             float testSecondsElapsedForFrame = Win_GetSecondsElapsed( LastCounter, Win_GetWallClock());
         } else {
-            OutputDebugStringA( "MISSED FRAME\n"); 
+            OutputDebugStringA( "MISSED FRAME\n");
         }
 
-        
+
         LARGE_INTEGER EndCounter = Win_GetWallClock();
         msPerFrame = 1000.0f*Win_GetSecondsElapsed( LastCounter, EndCounter);
         LastCounter = EndCounter;
 
         SwapBuffers( DeviceContext);
 
-        uint64 endCycleCount = __rdtsc();
-        uint64 cyclesElapsed = endCycleCount - LastCycleCount;
+        u64 endCycleCount = __rdtsc();
+        u64 cyclesElapsed = endCycleCount - LastCycleCount;
         LastCycleCount = endCycleCount;
 
-        int64 counterElapsed = EndCounter.QuadPart - LastCounter.QuadPart;
+        i64 counterElapsed = EndCounter.QuadPart - LastCounter.QuadPart;
 
         ++frame;
 
-        double FPS = (double)perfCountFrequency / (double)counterElapsed;
-        double MCPF = ((double)cyclesElapsed / (1000.0f * 1000.0f));
+        r64 FPS = (r64)perfCountFrequency / (r64)counterElapsed;
+        r64 MCPF = ((r64)cyclesElapsed / (1000.0f * 1000.0f));
 
         char timeStrBuffer[256];
 
         _snprintf_s( timeStrBuffer, sizeof( timeStrBuffer), "%.02fms/f, %.02fmc/f, frame %llu \n", msPerFrame, MCPF, frame);
 
         OutputDebugStringA( timeStrBuffer);
-        if( !(frame % 20)) {
-            SetWindowText( Window, timeStrBuffer);
-        }
-        
+        //if( !(frame % 20)) {
+            //SetWindowText( Window, timeStrBuffer);
+        //}
+
     }
 
     return 0;

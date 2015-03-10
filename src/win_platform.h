@@ -5,6 +5,6 @@
 
 // DEBUG ONLY
 void FreeMemory( void *memory);
-void* ReadFile(const char *filename, uint32* content_size);
+void* ReadFile(const char *filename, u32* content_size);
 
 #endif // WIN_PLATFORM_H

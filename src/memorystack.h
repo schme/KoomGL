@@ -5,14 +5,14 @@
 #include "types.h"
 
 struct MemoryStack {
-    bool32 isInitialized;
-    uint64 stackSize;
+    b32 isInitialized;
+    u64 stackSize;
     void *memoryPool;
     void *top;
 };
 
 /** initialises to zero before handing it out */
-void* popMemoryStack(MemoryStack* memory, uint64 bytes);
-void pushMemoryStack(MemoryStack* memory, uint64 bytes);
+void* popMemoryStack(MemoryStack* memory, u64 bytes);
+void pushMemoryStack(MemoryStack* memory, u64 bytes);
 
 #endif // MEMORYSTACK_H_

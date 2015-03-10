@@ -11,7 +11,7 @@
 do {\
         GLint logSize = 0;\
         glGetShaderiv( shader, GL_INFO_LOG_LENGTH, &logSize);\
-        GLchar *errorMessage = (GLchar*)malloc( (uint32)logSize );\
+        GLchar *errorMessage = (GLchar*)malloc( (u32)logSize );\
         glGetShaderInfoLog( shader, logSize, NULL, errorMessage);\
         std::cout << errorMessage << std::endl;\
         free(errorMessage);\
@@ -21,7 +21,7 @@ do {\
 do {\
         GLint logSize = 0;\
         glGetProgramiv( program, GL_INFO_LOG_LENGTH, &logSize);\
-        char* errorMessage = (char*)malloc( (uint32)logSize );\
+        char* errorMessage = (char*)malloc( (u32)logSize );\
         glGetProgramInfoLog( program, logSize, NULL, errorMessage);\
         std::cout << errorMessage << std::endl;\
         free(errorMessage);\
