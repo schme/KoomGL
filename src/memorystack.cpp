@@ -36,7 +36,5 @@ void pushMemoryStack(MemoryStack* memory, u64 bytes) {
 
     memory->top = (char*)memory->top - bytes;
 
-#if ENABLE_CONSOLE
     printf( "MemoryStack: returned %llu bytes\n", bytes);
-#endif
 }

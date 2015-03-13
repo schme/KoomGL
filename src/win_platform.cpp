@@ -1,4 +1,3 @@
-
 #include "win_platform.h"
 #include "game.h"
 
@@ -17,8 +16,6 @@
 #endif
 
 
-const i32 windowWidth = 1024;
-const i32 windowHeight = 768;
 const u64 memoryStackSize = 50*1024*1024;
 
 

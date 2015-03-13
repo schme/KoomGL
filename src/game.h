@@ -1,50 +1,70 @@
 #ifndef GAME_H_
 #define GAME_H_
 
+#include "platform.h"
+
 #include "ks_math.h"
-#include "memorystack.h"
 
-#if BUILD_INTERNAL
-// Debug versions only!
-void *ReadFile( const char* filename);
-void FreeMemory( void *Memory);
-#endif
+static i32 buf_width = windowWidth;
+static i32 buf_height = windowHeight;
+
+static u32 numPlanes = 1;
+static u32 numSpheres = 2;
+static u32 numLights = 1;
+
+static const r32 eps = 1e-5f;
+static const u32 max_depth = 6;
+static const r32 max_clip = 100000.0f;
 
 
-struct Camera {
-    vec3 pos;    
+struct Ray {
+    vec3 v;
+    vec3 pos;
+    r32 length;
 };
 
-
-struct GameInput {
-    r64 deltaTime;
-    u64 frame;
-    b32 KEY_W;
-    b32 KEY_A;
-    b32 KEY_S;
-    b32 KEY_D;
-    b32 KEY_UP;
-    b32 KEY_LEFT;
-    b32 KEY_DOWN;
-    b32 KEY_RIGHT;
-    b32 KEY_ESC;
-    b32 KEY_SPACE;
-
-    /**
-     * MB 0: LBUTTON
-     * MB 1: RBUTTON
-     * MB 2: MBUTTON
-     * MB 3: XBUTTON1
-     * MB 4: XBUTTON4
-     */
-    b32 MouseButtons[5];
-    i32 MouseX; 
-    i32 MouseY; 
-    i32 MouseZ;
+struct Plane {
+    vec3 color;
+    vec3 normal;
+    r32 pos;
 };
 
-void gameInit( MemoryStack *);
-void gameUpdateAndRender( GameInput);
-void resize( int w, int h);
+struct Sphere {
+    vec3 pos;
+    vec3 color;
+    r32 rad;
+};
+
+struct Light {
+    vec3 pos;
+    vec3 color;
+};
+
+enum class HitType {
+    None = 0, Plane, Sphere, Light
+};
+
+struct Intersection {
+    vec3 location;
+    vec3 normal;
+    i32 index;
+    HitType type = HitType::None;
+    r32 distance = max_clip;
+};
+
+inline Intersection
+InitIntrs() {
+    Intersection i;
+    i.location = {};
+    i.normal = {};
+    i.index = -1;
+    i.type = HitType::None;
+    i.distance = max_clip;
+    return i;
+}
+
+static Plane *planes;
+static Sphere *spheres;
+static Light *lights;
 
 #endif // GAME_H_
