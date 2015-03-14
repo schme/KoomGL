@@ -88,6 +88,13 @@ Sqrt( r32 a) {
 
 
 inline r32
+Pow( r32 x, r32 n) {
+    r32 result = powf( x, n);
+    return result;
+}
+
+
+inline r32
 Squared( r32 a) {
     r32 result = a*a;
     return result;
@@ -308,6 +315,12 @@ Length( vec3 v) {
     return result;
 }
 
+
+inline vec3
+Reflect( vec3 v, vec3 normal) {
+    vec3 result = Norm( 2.0f * normal * Dot( normal, v) - v);
+    return result;
+}
 
 
 /********************

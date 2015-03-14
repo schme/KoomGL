@@ -1,4 +1,6 @@
 #include "game.h"
+#include "scene.h"
+
 #include "ks_glutils.h"
 #include "ks_objprs.h"
 
@@ -81,11 +83,6 @@ void changeInputState( GameInput *state, GameInput input) {
 }
 
 
-void handleInput(GameInput input)
-{
-    static GameInput state;
-    changeInputState( &state, input);
-}
 
 void renderInit()
 {
@@ -160,7 +157,8 @@ void drawBuffer()
 static inline char
 normColorTo256( r32 c) {
     u32 result = RoundR32ToU32(
-                        Lerp( 0.0f, 255.0f, c));
+                        Lerp( 0.0f, 255.0f,
+                            Clamp(0.0f, 1.0f, c)));
     return (char)result;
 }
 
@@ -187,14 +185,60 @@ bufferToPPM(const char *filename)
 }
 
 
-void
-RayObjects( Ray ray, Intersection *inters)
+Ray
+CalcReflectedRay( Ray in, Intersection inters)
 {
+    Ray out;
+    out.pos = inters.location;
+    out.v = Reflect( in.v, inters.normal);
+    return out;
+}
 
+
+b32
+ShadowRayReachedLight( Ray ray )
+{
     for (u32 n = 0; n < numSpheres; ++n)
     {
         r32 rad = spheres[n].rad;
         vec3 v = (ray.pos + ray.v * (ray.length * eps)) - spheres[n].pos;
+        //vec3 v = ray.pos - spheres[n].pos;
+        r32 B = 2.0f*( Dot( ray.v, v));
+        r32 C = LengthSq(v) - Squared(rad);
+        r32 D = Squared(B) - 4.0f*C;    // A=1 when ray.v is normalized
+
+        if( D < 0.0f) continue;
+
+        r32 t = (-B - Sqrt(D))/2.0f;
+        if( t < 0.0f) {
+            t = (-B + Sqrt(D))/2.0f;
+        }
+
+        if( t > 0.0f ) return false;
+    }
+
+    for (u32 n = 0; n < numPlanes; ++n)
+    {
+        r32 vd = Dot(planes[n].normal, ray.v);
+        if( vd == 0.0f ) continue;
+
+        r32 d2 = -(Dot(planes[n].normal, ray.pos) + planes[n].pos);
+        r32 t = d2 / vd;
+        if( t > eps ) return false;
+    }
+
+    return true;
+}
+
+void
+RayObjectsIntersect( Ray ray, Intersection *inters, i32 rec_depth)
+{
+    if( rec_depth <= 0) { return; }
+
+    for (u32 n = 0; n < numSpheres; ++n)
+    {
+        r32 rad = spheres[n].rad;
+        vec3 v = ray.pos - spheres[n].pos;
         //vec3 v = ray.pos - spheres[n].pos;
         r32 B = 2.0f*( Dot( ray.v, v));
         r32 C = LengthSq(v) - Squared(rad);
@@ -211,7 +255,7 @@ RayObjects( Ray ray, Intersection *inters)
         inters->distance = t;
         inters->type = HitType::Sphere;
         inters->location = (ray.v * t) + ray.pos;
-        inters->normal = (inters->location - spheres[n].pos) * (1.0f/rad);
+        inters->normal = Norm((inters->location - spheres[n].pos) * (1.0f/rad));
     }
 
     for (u32 n = 0; n < numPlanes; ++n)
@@ -232,15 +276,37 @@ RayObjects( Ray ray, Intersection *inters)
 
 
 void
-RayTrace( vec3 *resultcolor, Ray ray, i32 rec_depth)
+RayTrace( vec3 *color_final, Ray ray, i32 rec_depth)
 {
     Intersection inters = InitIntrs();
 
-    RayObjects( ray, &inters);
+    vec3 ambient_color = {{0.1f, 0.1f, 0.1f}};
 
-    vec3 color = {};
+    vec3 color_direct = {};
+    vec3 color_reflected = {};
+    vec3 color_transmitted = {};
+
+    RayObjectsIntersect( ray, &inters, rec_depth);
 
     if( inters.type != HitType::None) {
+
+        Material mat;
+
+        switch (inters.type) {
+            case HitType::Plane: {
+                mat = materials[ planes[inters.index].matIndex];
+            } break;
+            case HitType::Sphere: {
+                mat = materials[ spheres[inters.index].matIndex];
+            } break;
+            default: {
+                mat = materials[ 0 ];
+            } break;
+        }
+
+        vec3 direct_diffuse = {};
+        vec3 direct_specular = {};
+        vec3 direct_ambient = mat.ambient * ambient_color;
 
         for (u32 i = 0; i < numLights; ++i)
         {
@@ -250,28 +316,26 @@ RayTrace( vec3 *resultcolor, Ray ray, i32 rec_depth)
             sray.v = Norm(lights[i].pos - inters.location);
             sray.length = inters.distance;
 
-            RayObjects( sray, &sinters);
+            if( !ShadowRayReachedLight( sray) ) continue;
 
-            if( sinters.type == HitType::None) {
-                color = (lights[i].color * 0.5f);
+            /** Direct color using Phong Model **/
+            r32 lambertian = Max( Dot(sray.v, inters.normal), 0.0f);
+            r32 specAngle = 0.0f;
+
+            if( lambertian > 0.0f) {
+                vec3 reflectDir = Reflect( -sray.v, inters.normal);
+                specAngle = Max( Dot(reflectDir, ray.v), 0.0f);
+                // specular = pow( specAngle, mat.alpha)
             }
+
+
+            direct_diffuse += mat.diffuse * (lambertian * lights[i].diffuseColor ) ;
+            direct_specular += mat.specular * (pow( specAngle, mat.alpha) *
+                                                         lights[i].specularColor);
         }
-
-        switch (inters.type) {
-
-            case HitType::Plane: {
-                *resultcolor = color + (planes[inters.index].color * 0.5f);
-            } break;
-
-            case HitType::Sphere: {
-                *resultcolor = color + (spheres[inters.index].color * 0.5f);
-            } break;
-
-            default: {
-            } break;
-        }
-
+        color_direct = direct_ambient + direct_diffuse + direct_specular;
     }
+    *color_final = color_direct;
 }
 
 
@@ -283,11 +347,12 @@ TraceFrame()
     const r32 ybottom = -9;
     const r32 ytop = 9;
 
-    vec3 camera_pos = {{0.0f, 0.0f, -10.0f}};
+    vec3 eye_pos = {{0.0f, 0.0f, -10.0f}};
 
     /** dx, dy per pixel */
     r32 dx = 24.0f/(r32)buf_width;
     r32 dy = 18.0f/(r32)buf_height;
+
 
     u32 index = 0;
     for (int j = 0; j < buf_height; ++j)
@@ -298,7 +363,6 @@ TraceFrame()
             vec3 color = {{0.0f, 0.0f, 0.0f}};
 
             index = j * buf_width + i;
-            vec3 *pixel = &((vec3*)draw_buffer)[index];
 
             /* position of the image plane in world coordinates. maybe */
             vec3 vp = {{
@@ -308,10 +372,11 @@ TraceFrame()
             }};
 
             Ray ray = {};
-            ray.pos = camera_pos;
+            ray.pos = eye_pos;
             ray.v = Norm(vp - ray.pos);
 
             RayTrace( &color, ray, max_depth);
+            vec3 *pixel = &((vec3*)draw_buffer)[index];
             *pixel = color;
 
         }
@@ -327,52 +392,35 @@ void gameInit(MemoryStack *ms)
     buffer_size = buf_width * buf_height * sizeof(vec3);
     draw_buffer = (vec3*)popMemoryStack( memory, buffer_size);
 
-    planes = (Plane*)popMemoryStack( memory, numPlanes * sizeof(Plane));
-    spheres = (Sphere*)popMemoryStack( memory, numSpheres * sizeof(Sphere));
-    lights = (Light*)popMemoryStack( memory, numLights * sizeof(Light));
-
-    spheres[0] = Sphere {
-        vec3{{-1.0f, -0.5f, 10.0f }},
-        vec3{{ 0.7f,  0.7f, 0.7f  }},
-        5.0f
-    };
-
-    spheres[1] = Sphere {
-        vec3{{ 7.0f, -1.0f, 15.0f }},
-        vec3{{ 0.3f,  0.0f, 0.0f  }},
-        5.0f
-    };
-
-    planes[0] = Plane {
-        vec3{{ 0.3f,  0.3f, 0.5f }},
-        vec3{{ 0.0f,  1.0f, 0.0f }},
-        7.5f
-    };
-
-    lights[0] = Light {
-        vec3{{ 5.0f,  20.0f,  10.0f }},
-        vec3{{ 0.9f,  0.85f,  1.0f  }}
-    };
-
+    defineScene();
     renderInit();
+}
+
+
+void handleInput(GameInput input)
+{
+    static GameInput state;
+    static b32 saved = false;
+    changeInputState( &state, input);
+    if( state.KEY_S && !saved) {
+        printf(" Saving\n");
+        bufferToPPM( "out/image5.ppm");
+        printf(" Saving done\n");
+        saved = true;
+    }
 }
 
 
 void gameUpdateAndRender( GameInput input)
 {
     static u32 run_count = 0;
-    static b32 saved = false;
     globalTime += (input.deltaTime / 1000.0f);
     handleInput( input);
     if( !run_count) {
         printf(" Tracing\n");
         TraceFrame();
         printf(" Tracing done\n");
-    } else if( !saved) {
-        printf(" Saving\n");
-        bufferToPPM( "out/image4.ppm");
-        printf(" Saving done\n");
-        saved = true;
+
     }
 
     drawBuffer();
