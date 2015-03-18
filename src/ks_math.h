@@ -210,7 +210,7 @@ Norm( vec2 a) {
 inline vec3
 Vec3( r32 a) {
     vec3 v{
-        a, a, a
+        {a, a, a}
     };
     return v;
 }
@@ -218,6 +218,15 @@ Vec3( r32 a) {
 inline vec3
 Vec3( i32 a) {
     vec3 v = Vec3((r32)a);
+    return v;
+}
+
+inline vec3
+Vec3( r32 x, r32 y, r32 z) {
+    vec3 v;
+    v.x = x;
+    v.y = y;
+    v.z = z;
     return v;
 }
 
@@ -243,6 +252,16 @@ operator *= ( vec3 &b, r32 a) {
 
     b = a * b;
     return b;
+}
+
+/** Todo(kasper): Find out what this is called and make a function for it */
+inline vec3
+operator * ( vec3 a, vec3 b) {
+    vec3 v;
+    v.x = a.x * b.x;
+    v.y = a.y * b.y;
+    v.z = a.z * b.z;
+    return v;
 }
 
 inline vec3
@@ -331,7 +350,7 @@ Reflect( vec3 v, vec3 normal) {
 inline vec4
 Vec4( r32 a) {
     vec4 v{
-        a, a, a, a
+        {a, a, a, a}
     };
     return v;
 }

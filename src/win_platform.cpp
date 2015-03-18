@@ -529,7 +529,7 @@ CALLBACK WinMain(   HINSTANCE Instance,
 
             float testSecondsElapsedForFrame = Win_GetSecondsElapsed( LastCounter, Win_GetWallClock());
         } else {
-            OutputDebugStringA( "MISSED FRAME\n");
+            //OutputDebugStringA( "MISSED FRAME\n");
         }
 
 
@@ -555,9 +555,7 @@ CALLBACK WinMain(   HINSTANCE Instance,
         _snprintf_s( timeStrBuffer, sizeof( timeStrBuffer), "%.02fms/f, %.02fmc/f, frame %llu \n", msPerFrame, MCPF, frame);
 
         OutputDebugStringA( timeStrBuffer);
-        //if( !(frame % 20)) {
-            //SetWindowText( Window, timeStrBuffer);
-        //}
+        //printf( "%s", timeStrBuffer);
 
     }
 

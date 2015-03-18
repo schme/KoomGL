@@ -21,7 +21,6 @@ struct Ray {
 };
 
 struct Plane {
-    vec3 color;
     vec3 normal;
     r32 pos;
     i32 matIndex;
@@ -29,7 +28,6 @@ struct Plane {
 
 struct Sphere {
     vec3 pos;
-    vec3 color;
     r32 rad;
     i32 matIndex;
 };
@@ -41,9 +39,9 @@ struct Light {
 };
 
 struct Material {
-    r32 specular;
-    r32 diffuse;
-    r32 ambient;
+    vec3 diffuse;
+    vec3 ambient;
+    vec3 specular;
     r32 alpha;  // shininess
 };
 

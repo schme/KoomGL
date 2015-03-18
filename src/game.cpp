@@ -278,9 +278,13 @@ RayObjectsIntersect( Ray ray, Intersection *inters, i32 rec_depth)
 void
 RayTrace( vec3 *color_final, Ray ray, i32 rec_depth)
 {
+    if( rec_depth <= 0) {
+        return;
+    }
+
     Intersection inters = InitIntrs();
 
-    vec3 ambient_color = {{0.1f, 0.1f, 0.1f}};
+    vec3 ambient_color = {{0.12f, 0.12f, 0.12f}};
 
     vec3 color_direct = {};
     vec3 color_reflected = {};
@@ -325,7 +329,6 @@ RayTrace( vec3 *color_final, Ray ray, i32 rec_depth)
             if( lambertian > 0.0f) {
                 vec3 reflectDir = Reflect( -sray.v, inters.normal);
                 specAngle = Max( Dot(reflectDir, ray.v), 0.0f);
-                // specular = pow( specAngle, mat.alpha)
             }
 
 
@@ -335,7 +338,7 @@ RayTrace( vec3 *color_final, Ray ray, i32 rec_depth)
         }
         color_direct = direct_ambient + direct_diffuse + direct_specular;
     }
-    *color_final = color_direct;
+    *color_final = color_direct + color_reflected + color_transmitted;
 }
 
 
@@ -416,12 +419,17 @@ void gameUpdateAndRender( GameInput input)
     static u32 run_count = 0;
     globalTime += (input.deltaTime / 1000.0f);
     handleInput( input);
+#if 1
     if( !run_count) {
         printf(" Tracing\n");
         TraceFrame();
         printf(" Tracing done\n");
 
     }
+#else
+    TraceFrame();
+#endif
+
 
     drawBuffer();
     run_count = 1;
