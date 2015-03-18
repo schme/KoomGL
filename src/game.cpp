@@ -185,27 +185,17 @@ bufferToPPM(const char *filename)
 }
 
 
-Ray
-CalcReflectedRay( Ray in, Intersection inters)
-{
-    Ray out;
-    out.pos = inters.location;
-    out.v = Reflect( in.v, inters.normal);
-    return out;
-}
-
-
 b32
 ShadowRayReachedLight( Ray ray )
 {
     for (u32 n = 0; n < numSpheres; ++n)
     {
         r32 rad = spheres[n].rad;
-        vec3 v = (ray.pos + ray.v * (ray.length * eps)) - spheres[n].pos;
+        vec3 v = (ray.pos + ray.dir * eps) - spheres[n].pos;
         //vec3 v = ray.pos - spheres[n].pos;
-        r32 B = 2.0f*( Dot( ray.v, v));
+        r32 B = 2.0f*( Dot( ray.dir, v));
         r32 C = LengthSq(v) - Squared(rad);
-        r32 D = Squared(B) - 4.0f*C;    // A=1 when ray.v is normalized
+        r32 D = Squared(B) - 4.0f*C;    // A=1 when ray.dir is normalized
 
         if( D < 0.0f) continue;
 
@@ -219,7 +209,7 @@ ShadowRayReachedLight( Ray ray )
 
     for (u32 n = 0; n < numPlanes; ++n)
     {
-        r32 vd = Dot(planes[n].normal, ray.v);
+        r32 vd = Dot(planes[n].normal, ray.dir);
         if( vd == 0.0f ) continue;
 
         r32 d2 = -(Dot(planes[n].normal, ray.pos) + planes[n].pos);
@@ -230,19 +220,19 @@ ShadowRayReachedLight( Ray ray )
     return true;
 }
 
-void
-RayObjectsIntersect( Ray ray, Intersection *inters, i32 rec_depth)
+Hit
+RayObjectsIntersect( Ray *ray, Intersection *inters)
 {
-    if( rec_depth <= 0) { return; }
+    Hit hit = InitHit();
 
     for (u32 n = 0; n < numSpheres; ++n)
     {
         r32 rad = spheres[n].rad;
-        vec3 v = ray.pos - spheres[n].pos;
+        vec3 v = ray->pos - spheres[n].pos;
         //vec3 v = ray.pos - spheres[n].pos;
-        r32 B = 2.0f*( Dot( ray.v, v));
+        r32 B = 2.0f*( Dot( ray->dir, v));
         r32 C = LengthSq(v) - Squared(rad);
-        r32 D = Squared(B) - 4.0f*C;    // A=1 when ray.v is normalized
+        r32 D = Squared(B) - 4.0f*C;    // A=1 when ray.dir is normalized
 
         if( D < 0.0f) continue;
         r32 t = (-B - Sqrt(D))/2.0f;
@@ -251,94 +241,120 @@ RayObjectsIntersect( Ray ray, Intersection *inters, i32 rec_depth)
         }
 
         if( t < 0.0f || t >= inters->distance ) continue;
-        inters->index = n;
         inters->distance = t;
-        inters->type = HitType::Sphere;
-        inters->location = (ray.v * t) + ray.pos;
-        inters->normal = Norm((inters->location - spheres[n].pos) * (1.0f/rad));
+        inters->point = (ray->dir * t) + ray->pos;
+        inters->normal = Norm((inters->point - spheres[n].pos) * (1.0f/rad));
+        hit.index = n;
+        hit.type = HitType::Sphere;
     }
 
     for (u32 n = 0; n < numPlanes; ++n)
     {
-        r32 vd = Dot(planes[n].normal, ray.v);
+        r32 vd = Dot(planes[n].normal, ray->dir);
         if( vd == 0.0f ) continue;
 
-        r32 d2 = -(Dot(planes[n].normal, ray.pos) + planes[n].pos);
+        r32 d2 = -(Dot(planes[n].normal, ray->pos) + planes[n].pos);
         r32 t = d2 / vd;
         if( t < eps || t >= inters->distance) continue;
-        inters->index = n;
         inters->distance = t;
-        inters->type = HitType::Plane;
-        inters->location = (ray.v * t) + ray.pos;
+        inters->point = (ray->dir * t) + ray->pos;
         inters->normal = vd > 0 ? -planes[n].normal : planes[n].normal;
+        hit.index = n;
+        hit.type = HitType::Plane;
     }
+    return hit;
+}
+
+
+vec3
+DirectLighting(vec3 view, Intersection intersection, Material material )
+{
+    const vec3 ambient_color = {{0.12f, 0.12f, 0.12f}};
+    vec3 color = {};
+
+    vec3 diffuse = {};
+    vec3 specular = {};
+    vec3 ambient = material.ambient * ambient_color;
+
+    for (u32 i = 0; i < numLights; ++i)
+    {
+        Intersection sinters = InitIntersection();
+
+        Ray shadow;
+        shadow.pos = intersection.point;
+        shadow.dir = Norm(lights[i].pos - intersection.point);
+
+        if( !ShadowRayReachedLight( shadow) ) continue;
+
+        /** Direct color using Phong Model **/
+        r32 lambertian = Max( Dot(shadow.dir, intersection.normal), 0.0f);
+        r32 specAngle = 0.0f;
+
+        if( lambertian > 0.0f) {
+            vec3 reflectDir = Reflect( -shadow.dir, intersection.normal);
+            specAngle = Max( Dot(reflectDir, view), 0.0f);
+        }
+
+
+        diffuse += material.diffuse * (lambertian * lights[i].diffuseColor ) ;
+        specular += material.specular * (pow( specAngle, material.alpha) *
+                                                     lights[i].specularColor);
+    }
+
+    color = ambient + diffuse + specular;
+    return color;
 }
 
 
 void
-RayTrace( vec3 *color_final, Ray ray, i32 rec_depth)
+RayTrace( Ray *ray)
 {
-    if( rec_depth <= 0) {
+    if( ray->rec_depth <= 0) {
         return;
     }
 
-    Intersection inters = InitIntrs();
-
-    vec3 ambient_color = {{0.12f, 0.12f, 0.12f}};
+    Intersection inters = InitIntersection();
 
     vec3 color_direct = {};
-    vec3 color_reflected = {};
-    vec3 color_transmitted = {};
+    Hit hit = RayObjectsIntersect( ray, &inters);
 
-    RayObjectsIntersect( ray, &inters, rec_depth);
+    if( hit.type != HitType::None) {
 
-    if( inters.type != HitType::None) {
+        Material material;
 
-        Material mat;
-
-        switch (inters.type) {
+        switch (hit.type) {
             case HitType::Plane: {
-                mat = materials[ planes[inters.index].matIndex];
+                material = materials[ planes[hit.index].matIndex];
             } break;
             case HitType::Sphere: {
-                mat = materials[ spheres[inters.index].matIndex];
+                material = materials[ spheres[hit.index].matIndex];
             } break;
             default: {
-                mat = materials[ 0 ];
+                material = materials[0];
             } break;
         }
 
-        vec3 direct_diffuse = {};
-        vec3 direct_specular = {};
-        vec3 direct_ambient = mat.ambient * ambient_color;
+        color_direct = DirectLighting( ray->dir, inters, material);
+        *ray->pixel += ray->attenuation * color_direct;
 
-        for (u32 i = 0; i < numLights; ++i)
-        {
-            Intersection sinters = InitIntrs();
-            Ray sray;
-            sray.pos = inters.location;
-            sray.v = Norm(lights[i].pos - inters.location);
-            sray.length = inters.distance;
+        /** transmitted light */
+        Ray transmitted;
+        transmitted.pixel = ray->pixel;
+        transmitted.attenuation = ray->attenuation * transmission_coefficient;
+        transmitted.pos = inters.point;
+        //transmitted.dir = transmission_dir;
+        transmitted.rec_depth = ray->rec_depth - 1;
+        //RayTrace( &transmitted );
 
-            if( !ShadowRayReachedLight( sray) ) continue;
-
-            /** Direct color using Phong Model **/
-            r32 lambertian = Max( Dot(sray.v, inters.normal), 0.0f);
-            r32 specAngle = 0.0f;
-
-            if( lambertian > 0.0f) {
-                vec3 reflectDir = Reflect( -sray.v, inters.normal);
-                specAngle = Max( Dot(reflectDir, ray.v), 0.0f);
-            }
-
-
-            direct_diffuse += mat.diffuse * (lambertian * lights[i].diffuseColor ) ;
-            direct_specular += mat.specular * (pow( specAngle, mat.alpha) *
-                                                         lights[i].specularColor);
-        }
-        color_direct = direct_ambient + direct_diffuse + direct_specular;
+        /** reflected light */
+        Ray reflected;
+        reflected.pixel = ray->pixel;
+        reflected.attenuation = ray->attenuation * transmission_coefficient;
+        reflected.pos = inters.point;
+        reflected.dir = Reflect( ray->dir, inters.normal);
+        reflected.rec_depth = ray->rec_depth - 1;
+        RayTrace( &reflected );
     }
-    *color_final = color_direct + color_reflected + color_transmitted;
 }
 
 
@@ -374,14 +390,16 @@ TraceFrame()
                 0.0f
             }};
 
-            Ray ray = {};
-            ray.pos = eye_pos;
-            ray.v = Norm(vp - ray.pos);
-
-            RayTrace( &color, ray, max_depth);
             vec3 *pixel = &((vec3*)draw_buffer)[index];
-            *pixel = color;
 
+            Ray ray = {};
+            ray.pixel = pixel;
+            ray.attenuation = Vec3(1.0f);
+            ray.pos = eye_pos;
+            ray.dir = Norm(vp - ray.pos);
+            ray.rec_depth = max_recursion_depth;
+
+            RayTrace( &ray);
         }
     }
 

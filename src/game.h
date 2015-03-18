@@ -10,14 +10,17 @@ static i32 buf_height = windowHeight;
 
 
 static const r32 eps = 1e-5f;
-static const u32 max_depth = 6;
+static const u32 max_recursion_depth = 6;
 static const r32 max_clip = 100000.0f;
+static const r32 transmission_coefficient = 0.9f;
 
 
 struct Ray {
-    vec3 v;
+    vec3 *pixel;
+    vec3 attenuation;
+    vec3 dir;
     vec3 pos;
-    r32 length; /* sometimes used to store the last t for epsilon usage */
+    i32 rec_depth;
 };
 
 struct Plane {
@@ -50,22 +53,31 @@ enum class HitType {
 };
 
 struct Intersection {
-    vec3 location;
+    vec3 point;
     vec3 normal;
-    i32 index;
-    HitType type = HitType::None;
     r32 distance = max_clip;
 };
 
+struct Hit {
+    i32 index;
+    HitType type;
+};
+
 inline Intersection
-InitIntrs() {
+InitIntersection() {
     Intersection i;
-    i.location = {};
+    i.point = {};
     i.normal = {};
-    i.index = -1;
-    i.type = HitType::None;
     i.distance = max_clip;
     return i;
+}
+
+inline Hit
+InitHit() {
+    Hit hit;
+    hit.index = -1;
+    hit.type = HitType::None;
+    return hit;
 }
 
 static Material *materials;
