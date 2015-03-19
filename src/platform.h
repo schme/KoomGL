@@ -28,8 +28,8 @@ typedef uint32_t b32;
 #define Gigabytes(x) (Megabytes(x)*1024LL)
 
 
-const i32 windowWidth = 640;
-const i32 windowHeight = 480;
+const i32 windowWidth = 1280;
+const i32 windowHeight = 720;
 
 struct GameInput {
     r64 deltaTime;

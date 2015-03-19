@@ -2,7 +2,6 @@
 #include "scene.h"
 
 #include "ks_glutils.h"
-#include "ks_objprs.h"
 
 #include <stdio.h>
 /** For handling PPM files */
@@ -25,8 +24,6 @@ static GLuint indexBufferObject;
 
 // uniforms
 static GLuint globalTimeUnif;
-
-static Mesh *scene;
 
 r32 background_vertices[] =
 {
@@ -191,7 +188,7 @@ ShadowRayReachedLight( Ray ray )
     for (u32 n = 0; n < numSpheres; ++n)
     {
         r32 rad = spheres[n].rad;
-        vec3 v = (ray.pos + ray.dir * eps) - spheres[n].pos;
+        vec3 v = (ray.pos + ray.dir * 3*eps) - spheres[n].pos;
         //vec3 v = ray.pos - spheres[n].pos;
         r32 B = 2.0f*( Dot( ray.dir, v));
         r32 C = LengthSq(v) - Squared(rad);
@@ -240,7 +237,7 @@ RayObjectsIntersect( Ray *ray, Intersection *inters)
             t = (-B + Sqrt(D))/2.0f;
         }
 
-        if( t < 0.0f || t >= inters->distance ) continue;
+        if( t < eps || t >= inters->distance ) continue;
         inters->distance = t;
         inters->point = (ray->dir * t) + ray->pos;
         inters->normal = Norm((inters->point - spheres[n].pos) * (1.0f/rad));
@@ -350,8 +347,8 @@ RayTrace( Ray *ray)
         Ray reflected;
         reflected.pixel = ray->pixel;
         reflected.attenuation = ray->attenuation * transmission_coefficient;
-        reflected.pos = inters.point;
-        reflected.dir = Reflect( ray->dir, inters.normal);
+        reflected.pos = inters.point + (-ray->dir * inters.distance * eps);
+        reflected.dir = Reflect( -ray->dir, inters.normal);
         reflected.rec_depth = ray->rec_depth - 1;
         RayTrace( &reflected );
     }
@@ -361,15 +358,15 @@ RayTrace( Ray *ray)
 static void
 TraceFrame()
 {
-    const r32 xleft = -12;
-    const r32 xright = 12;
+    const r32 xleft = -16;
+    const r32 xright = 16;
     const r32 ybottom = -9;
     const r32 ytop = 9;
 
     vec3 eye_pos = {{0.0f, 0.0f, -10.0f}};
 
     /** dx, dy per pixel */
-    r32 dx = 24.0f/(r32)buf_width;
+    r32 dx = 32.0f/(r32)buf_width;
     r32 dy = 18.0f/(r32)buf_height;
 
 

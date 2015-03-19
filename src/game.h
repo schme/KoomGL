@@ -12,7 +12,7 @@ static i32 buf_height = windowHeight;
 static const r32 eps = 1e-5f;
 static const u32 max_recursion_depth = 6;
 static const r32 max_clip = 100000.0f;
-static const r32 transmission_coefficient = 0.9f;
+static const r32 transmission_coefficient = 0.8f;
 
 
 struct Ray {
