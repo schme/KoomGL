@@ -183,16 +183,16 @@ bufferToPPM(const char *filename)
 
 
 b32
-ShadowRayReachedLight( Ray ray )
+ShadowRayReachedLight( Ray *ray )
 {
     for (u32 n = 0; n < numSpheres; ++n)
     {
         r32 rad = spheres[n].rad;
-        vec3 v = (ray.pos + ray.dir * 3*eps) - spheres[n].pos;
-        //vec3 v = ray.pos - spheres[n].pos;
-        r32 B = 2.0f*( Dot( ray.dir, v));
+        vec3 v = (ray->pos + ray->dir * (10.0f*eps)) - spheres[n].pos;
+        //vec3 v = ray->pos - spheres[n].pos;
+        r32 B = 2.0f*( Dot( ray->dir, v));
         r32 C = LengthSq(v) - Squared(rad);
-        r32 D = Squared(B) - 4.0f*C;    // A=1 when ray.dir is normalized
+        r32 D = Squared(B) - 4.0f*C;    // A=1 when ray->dir is normalized
 
         if( D < 0.0f) continue;
 
@@ -201,22 +201,26 @@ ShadowRayReachedLight( Ray ray )
             t = (-B + Sqrt(D))/2.0f;
         }
 
-        if( t > 0.0f ) return false;
+        if( t > 0.0f && t < ray->length) return false;
     }
 
     for (u32 n = 0; n < numPlanes; ++n)
     {
-        r32 vd = Dot(planes[n].normal, ray.dir);
-        if( vd == 0.0f ) continue;
+        r32 vd = Dot(planes[n].normal, ray->dir);
+        if( vd >= 0.0f ) continue;
 
-        r32 d2 = -(Dot(planes[n].normal, ray.pos) + planes[n].pos);
+        r32 d2 = -(Dot(planes[n].normal, ray->pos) + planes[n].pos);
         r32 t = d2 / vd;
-        if( t > eps ) return false;
+        if( t > eps && t < ray->length) return false;
     }
 
     return true;
 }
 
+/**
+ * TODO(kasper): use a better way to solve the quadratic equation for spheres:
+ * https://www.siggraph.org/education/materials/HyperGraph/math/math1.htm
+ */
 Hit
 RayObjectsIntersect( Ray *ray, Intersection *inters)
 {
@@ -226,10 +230,10 @@ RayObjectsIntersect( Ray *ray, Intersection *inters)
     {
         r32 rad = spheres[n].rad;
         vec3 v = ray->pos - spheres[n].pos;
-        //vec3 v = ray.pos - spheres[n].pos;
+        //vec3 v = ray->pos - spheres[n].pos;
         r32 B = 2.0f*( Dot( ray->dir, v));
         r32 C = LengthSq(v) - Squared(rad);
-        r32 D = Squared(B) - 4.0f*C;    // A=1 when ray.dir is normalized
+        r32 D = Squared(B) - 4.0f*C;    // A=1 when ray->dir is normalized
 
         if( D < 0.0f) continue;
         r32 t = (-B - Sqrt(D))/2.0f;
@@ -248,14 +252,18 @@ RayObjectsIntersect( Ray *ray, Intersection *inters)
     for (u32 n = 0; n < numPlanes; ++n)
     {
         r32 vd = Dot(planes[n].normal, ray->dir);
-        if( vd == 0.0f ) continue;
+        /**
+         * If vd > 0 the normal is pointing away from us. If we remove this culling
+         * the intersection normal must be checked
+         */
+        if( vd >= 0.0f ) continue;
 
         r32 d2 = -(Dot(planes[n].normal, ray->pos) + planes[n].pos);
         r32 t = d2 / vd;
         if( t < eps || t >= inters->distance) continue;
         inters->distance = t;
         inters->point = (ray->dir * t) + ray->pos;
-        inters->normal = vd > 0 ? -planes[n].normal : planes[n].normal;
+        inters->normal = planes[n].normal;
         hit.index = n;
         hit.type = HitType::Plane;
     }
@@ -266,7 +274,7 @@ RayObjectsIntersect( Ray *ray, Intersection *inters)
 vec3
 DirectLighting(vec3 view, Intersection intersection, Material material )
 {
-    const vec3 ambient_color = {{0.12f, 0.12f, 0.12f}};
+    const vec3 ambient_color = {{0.22f, 0.22f, 0.22f}};
     vec3 color = {};
 
     vec3 diffuse = {};
@@ -279,9 +287,11 @@ DirectLighting(vec3 view, Intersection intersection, Material material )
 
         Ray shadow;
         shadow.pos = intersection.point;
-        shadow.dir = Norm(lights[i].pos - intersection.point);
+        shadow.dir = lights[i].pos - intersection.point;
+        shadow.length = Length(shadow.dir);
+        shadow.dir = Norm(shadow.dir);
 
-        if( !ShadowRayReachedLight( shadow) ) continue;
+        if( !ShadowRayReachedLight( &shadow) ) continue;
 
         /** Direct color using Phong Model **/
         r32 lambertian = Max( Dot(shadow.dir, intersection.normal), 0.0f);
@@ -346,9 +356,9 @@ RayTrace( Ray *ray)
         /** reflected light */
         Ray reflected;
         reflected.pixel = ray->pixel;
-        reflected.attenuation = ray->attenuation * transmission_coefficient;
-        reflected.pos = inters.point + (-ray->dir * inters.distance * eps);
+        reflected.attenuation = ray->attenuation * material.specular * transmission_coefficient;
         reflected.dir = Reflect( -ray->dir, inters.normal);
+        reflected.pos = inters.point + (reflected.dir * inters.distance * eps);
         reflected.rec_depth = ray->rec_depth - 1;
         RayTrace( &reflected );
     }
@@ -380,7 +390,6 @@ TraceFrame()
 
             index = j * buf_width + i;
 
-            /* position of the image plane in world coordinates. maybe */
             vec3 vp = {{
                 xleft + 0.5f * dx + i * dx,
                 ytop - 0.5f * dy - j * dy,
@@ -422,7 +431,7 @@ void handleInput(GameInput input)
     changeInputState( &state, input);
     if( state.KEY_S && !saved) {
         printf(" Saving\n");
-        bufferToPPM( "out/image5.ppm");
+        bufferToPPM( "out/image7.ppm");
         printf(" Saving done\n");
         saved = true;
     }

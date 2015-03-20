@@ -2,6 +2,9 @@
 #define SCENE_H_
 
 #include "game.h"
+/*
+ * TODO(kasper): Move into a separate file which is read at runtime
+ */
 
 /**
  * material:
@@ -15,27 +18,27 @@ Material scene_materials[] =
     {   Vec3( 0.5f, 0.5f, 0.5f),
         Vec3( 0.5f, 0.5f, 0.5f),
         Vec3( 0.6f, 0.6f, 0.6f),
-        32.0f
-    },
-    {   Vec3( 0.8f, 0.2f, 0.2f ),
-        Vec3( 0.8f, 0.2f, 0.2f ),
-        Vec3( 1.0f, 0.89f, 0.9f ),
         16.0f
     },
-    {   Vec3( 0.2f, 0.2f, 0.8f ),
-        Vec3( 0.2f, 0.2f, 0.8f ),
-        Vec3( 1.0f, 0.98f, 0.9f ),
-        16.0f
+    {   Vec3( 0.5f, 0.1f, 0.1f ),
+        Vec3( 0.5f, 0.1f, 0.1f ),
+        Vec3( 0.05f, 0.01f, 0.01f ),
+        4.0f
     },
-    {   Vec3( 0.2f, 0.8f, 0.2f ),
-        Vec3( 0.2f, 0.8f, 0.2f ),
-        Vec3( 1.0f, 0.98f, 0.9f ),
-        16.0f
+    {   Vec3( 0.1f, 0.1f, 0.5f ),
+        Vec3( 0.1f, 0.1f, 0.5f ),
+        Vec3( 0.20f, 0.20f, 0.20f ),
+        4.0f
+    },
+    {   Vec3( 0.1f, 0.5f, 0.1f ),
+        Vec3( 0.1f, 0.5f, 0.1f ),
+        Vec3( 0.20f, 0.20f, 0.20f ),
+        4.0f
     },  // mirror
     {   Vec3( 0.0f, 0.0f, 0.0f ),
         Vec3( 0.0f, 0.0f, 0.0f ),
-        Vec3( 1.0f, 0.98f, 0.9f ),
-         32.0f
+        Vec3( 1.0f, 1.0f, 1.0f ),
+        32.0f
     },
 };
 
@@ -47,13 +50,13 @@ Material scene_materials[] =
  */
 Sphere scene_spheres[] = {
     {   {{  -7.0f, -0.5f, 12.0f }},
-        5.0f, 4
+        5.0f, 1
     },
     {   {{  7.0f, -1.0f, 12.0f }},
-        5.0f, 4
+        5.0f, 2
     },
     {   {{  0.0f, 10.0f, 15.0f }},
-        5.0f, 4
+        5.0f, 3
     },
 };
 

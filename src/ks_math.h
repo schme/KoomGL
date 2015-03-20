@@ -336,8 +336,8 @@ Length( vec3 v) {
 
 
 inline vec3
-Reflect( vec3 v, vec3 normal) {
-    vec3 result = Norm( 2.0f * normal * Dot( normal, v) - v);
+Reflect( vec3 incident, vec3 normal) {
+    vec3 result = Norm( 2.0f * normal * Dot( normal, incident) - incident);
     return result;
 }
 
