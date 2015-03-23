@@ -1,6 +1,6 @@
 CC=cl
 # -Od for no optimizations, -Ox for max
-CFLAGS=-nologo -FC -Zi -EHsc -Oi -Od -WX -W4 -wd4201 -wd4189 -wd4100 -wd4127 -wd4996
+CFLAGS=-nologo -FC -Zi -EHsc -Oi -Ox -WX -W4 -wd4201 -wd4189 -wd4100 -wd4127 -wd4996
 LDFLAGS=
 SRCF= src
 SOURCES= $(SRCF)\win_platform.cpp $(SRCF)\game.cpp $(SRCF)\memorystack.cpp $(SRCF)\ks_glutils.cpp

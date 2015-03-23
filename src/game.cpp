@@ -347,7 +347,7 @@ RayTrace( Ray *ray)
         /** transmitted light */
         Ray transmitted;
         transmitted.pixel = ray->pixel;
-        transmitted.attenuation = ray->attenuation * transmission_coefficient;
+        transmitted.attenuation = ray->attenuation;
         transmitted.pos = inters.point;
         //transmitted.dir = transmission_dir;
         transmitted.rec_depth = ray->rec_depth - 1;
@@ -356,7 +356,7 @@ RayTrace( Ray *ray)
         /** reflected light */
         Ray reflected;
         reflected.pixel = ray->pixel;
-        reflected.attenuation = ray->attenuation * material.specular * transmission_coefficient;
+        reflected.attenuation = ray->attenuation * material.specular;
         reflected.dir = Reflect( -ray->dir, inters.normal);
         reflected.pos = inters.point + (reflected.dir * inters.distance * eps);
         reflected.rec_depth = ray->rec_depth - 1;
@@ -379,33 +379,51 @@ TraceFrame()
     r32 dx = 32.0f/(r32)buf_width;
     r32 dy = 18.0f/(r32)buf_height;
 
+    const i32 sample_count = 16;
+    i32 aa_grid_side = (i32)Sqrt((r32)sample_count);
+    vec2 aa_grid[sample_count];
+
+
+    r32 sdx = dx/(sample_count / 2.0f);
+    r32 sdy = dy/(sample_count / 2.0f);
+
+
+    for (int j = 0; j < aa_grid_side; ++j)
+    {
+        for (int i = 0; i < aa_grid_side; ++i)
+        {
+            u32 index = aa_grid_side * j + i;
+            aa_grid[index] = Vec2( sdx + sdx * i, sdy + sdy * j);
+        }
+    }
 
     u32 index = 0;
     for (int j = 0; j < buf_height; ++j)
     {
         for (int i = 0; i < buf_width; ++i)
         {
-
-            vec3 color = {{0.0f, 0.0f, 0.0f}};
-
             index = j * buf_width + i;
-
-            vec3 vp = {{
-                xleft + 0.5f * dx + i * dx,
-                ytop - 0.5f * dy - j * dy,
-                0.0f
-            }};
-
             vec3 *pixel = &((vec3*)draw_buffer)[index];
 
-            Ray ray = {};
-            ray.pixel = pixel;
-            ray.attenuation = Vec3(1.0f);
-            ray.pos = eye_pos;
-            ray.dir = Norm(vp - ray.pos);
-            ray.rec_depth = max_recursion_depth;
+            for (int sample = 0; sample < sample_count; ++sample)
+            {
 
-            RayTrace( &ray);
+                vec3 vp = {{
+                    xleft + aa_grid[sample].x + i * dx,
+                    ytop - aa_grid[sample].y - j * dy,
+                    0.0f
+                }};
+
+                Ray ray = {};
+                ray.pixel = pixel;
+                ray.attenuation = Vec3(1.0f);
+                ray.pos = eye_pos;
+                ray.dir = Norm(vp - ray.pos);
+                ray.rec_depth = max_recursion_depth;
+
+                RayTrace( &ray);
+            }
+            (*pixel) = (*pixel) / (r32)sample_count;
         }
     }
 
@@ -431,7 +449,7 @@ void handleInput(GameInput input)
     changeInputState( &state, input);
     if( state.KEY_S && !saved) {
         printf(" Saving\n");
-        bufferToPPM( "out/image7.ppm");
+        bufferToPPM( "out/image.ppm");
         printf(" Saving done\n");
         saved = true;
     }

@@ -114,15 +114,19 @@ Abs( r32 a) {
 
 inline vec2
 Vec2( r32 a) {
-    vec2 v{
-        a, a
-    };
+    vec2 v = {{a, a}};
     return v;
 }
 
 inline vec2
 Vec2( i32 a) {
     vec2 v = Vec2((r32)a);
+    return v;
+}
+
+inline vec2
+Vec2( r32 x, r32 y) {
+    vec2 v = {{x, y}};
     return v;
 }
 
@@ -262,6 +266,15 @@ operator * ( vec3 a, vec3 b) {
     v.y = a.y * b.y;
     v.z = a.z * b.z;
     return v;
+}
+
+inline vec3
+operator / (vec3 v, r32 a) {
+    vec3 result;
+    result.x = v.x / a;
+    result.y = v.y / a;
+    result.z = v.z / a;
+    return result;
 }
 
 inline vec3
