@@ -36,7 +36,6 @@ struct Light {
 
 struct Material {
     vec3 diffuse;
-    vec3 ambient;
     vec3 specular;
     r32 shininess;
     r32 refractive_index;

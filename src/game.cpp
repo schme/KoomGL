@@ -306,7 +306,7 @@ DirectLighting(vec3 view, Intersection intersection, Material *material )
 
     vec3 diffuse = {};
     vec3 specular = {};
-    vec3 ambient = material->ambient * ambient_color;
+    vec3 ambient = material->diffuse * ambient_color;
 
     for (u32 i = 0; i < numLights; ++i)
     {
@@ -343,7 +343,9 @@ DirectLighting(vec3 view, Intersection intersection, Material *material )
 void
 RayTrace( Ray *ray)
 {
-    if( ray->rec_depth <= 0 || Length(ray->attenuation) < ray_attenuation_clip) {
+    if( ray->rec_depth <= 0 ||
+        Length(ray->attenuation) < ray_attenuation_clip)
+    {
         return;
     }
 
@@ -386,20 +388,23 @@ RayTrace( Ray *ray)
         Ray transmitted;
         transmitted.attenuation = ray->attenuation * (Vec3(1.0f) - material->specular);
 
-        /** Not often needed, so probably more efficient to check here than after call */
+        /** Not always needed, so probably more efficient to check here than after call */
         if( Length(transmitted.attenuation) > ray_attenuation_clip) {
+            // into an object
             if( ray->refractive_index == 1.0f) {
                 transmitted.dir = CalculateTransmittedRay( -ray->dir, inters.normal,
                                                     1.0f, material->refractive_index);
                 transmitted.refractive_index = material->refractive_index;
+            // out of an object
             } else {
                 r32 sq = TotalInternalReflection( -ray->dir, inters.normal,
                                                     material->refractive_index, 1.0f);
-                // no total internal reflection
+                // no total internal reflection, carry on with inversed normal
                 if( sq > 0.0f) {
                     transmitted.dir = CalculateTransmittedRay( -ray->dir, -inters.normal,
                                                         material->refractive_index, 1.0f, sq);
                     transmitted.refractive_index = 1.0f;
+                // total internal reflection, cull the ray
                 } else {
                     //TODO(kasper): structure this section better so this dirty hack isn't needed
                     transmitted.attenuation = Vec3(0.0f);
@@ -471,7 +476,7 @@ TraceFrame()
                 ray.length = Length(ray.dir);
                 ray.dir = Norm(ray.dir);
                 ray.rec_depth = max_recursion_depth;
-                ray.refractive_index = 1.0f;
+                ray.refractive_index = 1.0f;    // air
 
                 RayTrace( &ray);
             }
