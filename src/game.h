@@ -10,18 +10,11 @@ static i32 buf_height = windowHeight;
 
 
 static const r32 eps = 1e-5f;
+static const r32 ray_attenuation_clip = 1e-5f;
 static const u32 max_recursion_depth = 6;
 static const r32 max_clip = 100000.0f;
 
 
-struct Ray {
-    vec3 *pixel;
-    vec3 attenuation;
-    vec3 dir;
-    vec3 pos;
-    r32 length;
-    i32 rec_depth;
-};
 
 struct Plane {
     vec3 normal;
@@ -45,7 +38,8 @@ struct Material {
     vec3 diffuse;
     vec3 ambient;
     vec3 specular;
-    r32 alpha;  // shininess
+    r32 shininess;
+    r32 refractive_index;
 };
 
 enum class HitType {
@@ -56,6 +50,16 @@ struct Intersection {
     vec3 point;
     vec3 normal;
     r32 distance = max_clip;
+};
+
+struct Ray {
+    vec3 *pixel;
+    vec3 attenuation;
+    vec3 dir;
+    vec3 pos;
+    r32 refractive_index;
+    i32 rec_depth;
+    r32 length;
 };
 
 struct Hit {
@@ -89,5 +93,7 @@ static u32 numMaterials;
 static u32 numPlanes;
 static u32 numSpheres;
 static u32 numLights;
+
+static vec3 scene_ambient_color;
 
 #endif // GAME_H_

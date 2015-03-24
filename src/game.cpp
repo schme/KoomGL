@@ -121,15 +121,6 @@ void renderInit()
 
     glUseProgram(0);
 
-    //glEnable( GL_BLEND);
-    //glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    //glEnable( GL_DEPTH_TEST);
-    //glDepthMask( GL_TRUE);
-    //glDepthFunc( GL_LEQUAL);
-    //glDepthRange( 1.0f, 0.0f);
-    //glClearDepth(1.0f);
-
     glEnable( GL_CULL_FACE);
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
@@ -137,13 +128,15 @@ void renderInit()
 }
 
 inline
-void drawBuffer()
+void drawBuffer(b32 refresh_texture)
 {
     glClear( GL_COLOR_BUFFER_BIT );
     glUseProgram( shaderPrograms[0]);
 
     glUniform1f( globalTimeUnif, globalTime);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, buf_width, buf_height, 0, GL_RGB, GL_FLOAT, draw_buffer);
+    if( refresh_texture) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, buf_width, buf_height, 0, GL_RGB, GL_FLOAT, draw_buffer);
+    }
     glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
     glUseProgram(0);
@@ -179,6 +172,41 @@ bufferToPPM(const char *filename)
         }
     }
     fclose(fp);
+}
+
+/**
+ * Using * for dot product:
+ *
+ * T = (nr(N * I) - (1 - nr^2( 1- (N*I)^2))^1/2 )N - nrI
+ */
+vec3
+CalculateTransmittedRay( vec3 incoming, vec3 normal, r32 eta_i, r32 eta_t)
+{
+    vec3 T;
+    r32 eta_r = eta_i / eta_t;
+    r32 angle = eta_r * Dot( normal, incoming);
+    angle -= Sqrt( 1-Squared(eta_r) * (1-Squared(Dot(normal, incoming))));
+    T = Norm(angle * normal - eta_r * incoming);
+    return T;
+}
+
+vec3
+CalculateTransmittedRay( vec3 incoming, vec3 normal, r32 eta_i, r32 eta_t, r32 sq)
+{
+    vec3 T;
+    r32 eta_r = eta_i / eta_t;
+    r32 angle = eta_r * Dot( normal, incoming) - Sqrt(sq);
+    T = Norm(angle * normal - eta_r * incoming);
+    return T;
+}
+
+r32
+TotalInternalReflection( vec3 incoming, vec3 normal, r32 eta_i, r32 eta_t)
+{
+    r32 result;
+    r32 eta_r = eta_i / eta_t;
+    result = 1-Squared(eta_r) * (1-Squared(Dot(normal, incoming)));
+    return result;
 }
 
 
@@ -272,14 +300,13 @@ RayObjectsIntersect( Ray *ray, Intersection *inters)
 
 
 vec3
-DirectLighting(vec3 view, Intersection intersection, Material material )
+DirectLighting(vec3 view, Intersection intersection, Material *material )
 {
-    const vec3 ambient_color = {{0.22f, 0.22f, 0.22f}};
     vec3 color = {};
 
     vec3 diffuse = {};
     vec3 specular = {};
-    vec3 ambient = material.ambient * ambient_color;
+    vec3 ambient = material->ambient * ambient_color;
 
     for (u32 i = 0; i < numLights; ++i)
     {
@@ -303,8 +330,8 @@ DirectLighting(vec3 view, Intersection intersection, Material material )
         }
 
 
-        diffuse += material.diffuse * (lambertian * lights[i].diffuseColor ) ;
-        specular += material.specular * (pow( specAngle, material.alpha) *
+        diffuse += material->diffuse * (lambertian * lights[i].diffuseColor ) ;
+        specular += material->specular * (pow( specAngle, material->shininess) *
                                                      lights[i].specularColor);
     }
 
@@ -316,7 +343,7 @@ DirectLighting(vec3 view, Intersection intersection, Material material )
 void
 RayTrace( Ray *ray)
 {
-    if( ray->rec_depth <= 0) {
+    if( ray->rec_depth <= 0 || Length(ray->attenuation) < ray_attenuation_clip) {
         return;
     }
 
@@ -327,40 +354,63 @@ RayTrace( Ray *ray)
 
     if( hit.type != HitType::None) {
 
-        Material material;
+        Material *material;
 
         switch (hit.type) {
             case HitType::Plane: {
-                material = materials[ planes[hit.index].matIndex];
+
+                material = &materials[ planes[hit.index].matIndex];
             } break;
             case HitType::Sphere: {
-                material = materials[ spheres[hit.index].matIndex];
+                material = &materials[ spheres[hit.index].matIndex];
             } break;
             default: {
-                material = materials[0];
+                material = &materials[0];
             } break;
         }
 
         color_direct = DirectLighting( ray->dir, inters, material);
         *ray->pixel += ray->attenuation * color_direct;
 
-        /** transmitted light */
-        Ray transmitted;
-        transmitted.pixel = ray->pixel;
-        transmitted.attenuation = ray->attenuation;
-        transmitted.pos = inters.point;
-        //transmitted.dir = transmission_dir;
-        transmitted.rec_depth = ray->rec_depth - 1;
-        //RayTrace( &transmitted );
 
-        /** reflected light */
         Ray reflected;
         reflected.pixel = ray->pixel;
-        reflected.attenuation = ray->attenuation * material.specular;
+        reflected.refractive_index = ray->refractive_index;
+        reflected.attenuation = ray->attenuation * material->specular;
         reflected.dir = Reflect( -ray->dir, inters.normal);
         reflected.pos = inters.point + (reflected.dir * inters.distance * eps);
         reflected.rec_depth = ray->rec_depth - 1;
         RayTrace( &reflected );
+
+
+        Ray transmitted;
+        transmitted.attenuation = ray->attenuation * (Vec3(1.0f) - material->specular);
+
+        /** Not often needed, so probably more efficient to check here than after call */
+        if( Length(transmitted.attenuation) > ray_attenuation_clip) {
+            if( ray->refractive_index == 1.0f) {
+                transmitted.dir = CalculateTransmittedRay( -ray->dir, inters.normal,
+                                                    1.0f, material->refractive_index);
+                transmitted.refractive_index = material->refractive_index;
+            } else {
+                r32 sq = TotalInternalReflection( -ray->dir, inters.normal,
+                                                    material->refractive_index, 1.0f);
+                // no total internal reflection
+                if( sq > 0.0f) {
+                    transmitted.dir = CalculateTransmittedRay( -ray->dir, -inters.normal,
+                                                        material->refractive_index, 1.0f, sq);
+                    transmitted.refractive_index = 1.0f;
+                } else {
+                    //TODO(kasper): structure this section better so this dirty hack isn't needed
+                    transmitted.attenuation = Vec3(0.0f);
+                    transmitted.dir = Vec3(0.0f);
+                }
+            }
+            transmitted.pixel = ray->pixel;
+            transmitted.pos = inters.point + (transmitted.dir * inters.distance * eps);
+            transmitted.rec_depth = ray->rec_depth - 1;
+            RayTrace( &transmitted );
+        }
     }
 }
 
@@ -368,21 +418,20 @@ RayTrace( Ray *ray)
 static void
 TraceFrame()
 {
-    const r32 xleft = -16;
-    const r32 xright = 16;
-    const r32 ybottom = -9;
-    const r32 ytop = 9;
+    const r32 xleft = -8;
+    const r32 xright = 8;
+    const r32 ybottom = -4.5;
+    const r32 ytop = 4.5;
 
     vec3 eye_pos = {{0.0f, 0.0f, -10.0f}};
 
     /** dx, dy per pixel */
-    r32 dx = 32.0f/(r32)buf_width;
-    r32 dy = 18.0f/(r32)buf_height;
+    r32 dx = (xright*2.0f)/(r32)buf_width;
+    r32 dy = (ytop*2.0f)/(r32)buf_height;
 
     const i32 sample_count = 16;
     i32 aa_grid_side = (i32)Sqrt((r32)sample_count);
     vec2 aa_grid[sample_count];
-
 
     r32 sdx = dx/(sample_count / 2.0f);
     r32 sdy = dy/(sample_count / 2.0f);
@@ -411,15 +460,18 @@ TraceFrame()
                 vec3 vp = {{
                     xleft + aa_grid[sample].x + i * dx,
                     ytop - aa_grid[sample].y - j * dy,
-                    0.0f
+                    -4.0f
                 }};
 
                 Ray ray = {};
                 ray.pixel = pixel;
                 ray.attenuation = Vec3(1.0f);
                 ray.pos = eye_pos;
-                ray.dir = Norm(vp - ray.pos);
+                ray.dir = vp - ray.pos;
+                ray.length = Length(ray.dir);
+                ray.dir = Norm(ray.dir);
                 ray.rec_depth = max_recursion_depth;
+                ray.refractive_index = 1.0f;
 
                 RayTrace( &ray);
             }
@@ -458,23 +510,26 @@ void handleInput(GameInput input)
 
 void gameUpdateAndRender( GameInput input)
 {
-    static u32 run_count = 0;
     globalTime += (input.deltaTime / 1000.0f);
     handleInput( input);
+    b32 refresh_texture = true;
 #if 1
-    if( !run_count) {
+    r32 trace_frame_start = 0.0f;
+    if( input.frame == 0) {
+        trace_frame_start = globalTime;
         printf(" Tracing\n");
         TraceFrame();
         printf(" Tracing done\n");
 
+    } else if ( input.frame == 1) {
+        printf(" ~trace frame time: %.2fs\n", globalTime - trace_frame_start);
     }
 #else
     TraceFrame();
 #endif
 
-
-    drawBuffer();
-    run_count = 1;
+    drawBuffer(refresh_texture);
+    refresh_texture = false;
 }
 
 

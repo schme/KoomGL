@@ -40,7 +40,6 @@ SafeTruncateU32( u64 i)
     return (u32)i;
 }
 
-
 // DEBUG ONLY
 void
 FreeMemory( void *memory) {
@@ -50,7 +49,7 @@ FreeMemory( void *memory) {
 }
 
 
-/* Using malloc instead of VirtualAlloc because malloc
+/* Using malloc because it's
  * is better suited for small allocations
  */
 // DEBUG ONLY
@@ -208,7 +207,6 @@ Win_CreateGLContext()
 
     return 1;
 }
-
 
 
 inline LARGE_INTEGER

@@ -64,6 +64,8 @@ void gameUpdateAndRender( GameInput);
 void resize( int w, int h);
 
 
+
+
 // DEBUG ONLY
 void* Read_File(const char *filename, u32* content_size);
 void  Write_File( const char *filename, void* buffer, u32 buffer_size);

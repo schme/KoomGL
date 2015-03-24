@@ -6,39 +6,47 @@
  * TODO(kasper): Move into a separate file which is read at runtime
  */
 
+vec3 ambient_color = {{0.22f, 0.22f, 0.22f}};
+
 /**
  * material:
  * vec3 diffuse
  * vec3 ambient
  * vec3 specular
  * r32 alpha
+ * r32 refractive_index
  */
 Material scene_materials[] =
 {
-    {   Vec3( 0.5f, 0.5f, 0.5f),
-        Vec3( 0.5f, 0.5f, 0.5f),
-        Vec3( 0.6f, 0.6f, 0.6f),
-        16.0f
+    {   Vec3( 0.3f, 0.3f, 0.7f),
+        Vec3( 0.3f, 0.3f, 0.7f),
+        Vec3( 1.0f, 1.0f, 1.0f),
+        16.0f, 1.4f
     },
     {   Vec3( 0.5f, 0.1f, 0.1f ),
         Vec3( 0.5f, 0.1f, 0.1f ),
         Vec3( 0.05f, 0.01f, 0.01f ),
-        4.0f
+        4.0f, 1.4f
     },
     {   Vec3( 0.1f, 0.1f, 0.5f ),
         Vec3( 0.1f, 0.1f, 0.5f ),
         Vec3( 0.20f, 0.20f, 0.20f ),
-        4.0f
+        4.0f, 1.4f
     },
-    {   Vec3( 0.1f, 0.5f, 0.1f ),
-        Vec3( 0.1f, 0.5f, 0.1f ),
-        Vec3( 0.20f, 0.20f, 0.20f ),
-        4.0f
+    {   Vec3( 0.7f, 0.5f, 0.1f ),
+        Vec3( 0.7f, 0.5f, 0.1f ),
+        Vec3( 0.00f, 0.00f, 0.00f ),
+        32.0f, 1.4f
     },  // mirror
     {   Vec3( 0.0f, 0.0f, 0.0f ),
         Vec3( 0.0f, 0.0f, 0.0f ),
         Vec3( 1.0f, 1.0f, 1.0f ),
-        32.0f
+        32.0f, 1.4f
+    },  // transparent
+    {   Vec3( 0.0f, 0.0f, 0.0f ),
+        Vec3( 0.0f, 0.0f, 0.0f ),
+        Vec3( 0.0f, 0.0f, 0.0f ),
+        0.0f, 1.5f
     },
 };
 
@@ -49,14 +57,14 @@ Material scene_materials[] =
  * i32 material;
  */
 Sphere scene_spheres[] = {
-    {   {{  -7.0f, -0.5f, 12.0f }},
-        5.0f, 4
+    {   {{  -10.0f, -0.5f, 12.0f }},
+        5.0f, 5
     },
-    {   {{  7.0f, -1.0f, 12.0f }},
-        5.0f, 4
+    {   {{  -4.0f, 5.0f, 5.0f }},
+        4.0f, 5
     },
-    {   {{  0.0f, 10.0f, 15.0f }},
-        5.0f, 4
+    {   {{  0.0f, 5.0f, 20.0f }},
+        8.0f, 3
     },
 };
 
@@ -102,6 +110,8 @@ defineScene() {
     planes = scene_planes;
     spheres = scene_spheres;
     lights = scene_lights;
+
+    scene_ambient_color = ambient_color;
 }
 
 #endif // SCENE_H_
