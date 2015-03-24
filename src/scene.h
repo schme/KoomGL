@@ -11,9 +11,8 @@ vec3 ambient_color = {{0.22f, 0.22f, 0.22f}};
 /**
  * material:
  * vec3 diffuse
- * vec3 ambient
  * vec3 specular
- * r32 alpha
+ * r32 shininess (power)
  * r32 refractive_index
  */
 Material scene_materials[] =
@@ -32,7 +31,7 @@ Material scene_materials[] =
     },
     {   Vec3( 0.7f, 0.5f, 0.1f ),
         Vec3( 0.10f, 0.10f, 0.10f ),
-        4.0f, 1.4f
+        100.0f, 1.4f
 
     },  // mirror
     {   Vec3( 0.0f, 0.0f, 0.0f ),
