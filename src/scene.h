@@ -33,10 +33,12 @@ Material scene_materials[] =
     {   Vec3( 0.7f, 0.5f, 0.1f ),
         Vec3( 0.10f, 0.10f, 0.10f ),
         4.0f, 1.4f
+
     },  // mirror
     {   Vec3( 0.0f, 0.0f, 0.0f ),
         Vec3( 1.0f, 1.0f, 1.0f ),
         32.0f, 1.4f
+
     },  // transparent
     {   Vec3( 0.10f, 0.10f, 0.1f ),
         Vec3( 0.10f, 0.10f, 0.10f ),
