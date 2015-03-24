@@ -31,7 +31,7 @@ Material scene_materials[] =
     },
     {   Vec3( 0.7f, 0.5f, 0.1f ),
         Vec3( 0.10f, 0.10f, 0.10f ),
-        100.0f, 1.4f
+        50.0f, 1.4f
 
     },  // mirror
     {   Vec3( 0.0f, 0.0f, 0.0f ),

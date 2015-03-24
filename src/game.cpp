@@ -306,7 +306,6 @@ DirectLighting(vec3 view, Intersection intersection, Material *material )
 
     vec3 diffuse = {};
     vec3 specular = {};
-    vec3 ambient = material->diffuse * ambient_color;
 
     for (u32 i = 0; i < numLights; ++i)
     {
@@ -318,9 +317,10 @@ DirectLighting(vec3 view, Intersection intersection, Material *material )
         shadow.length = Length(shadow.dir);
         shadow.dir = Norm(shadow.dir);
 
-        if( !ShadowRayReachedLight( &shadow) ) continue;
+        //if( !ShadowRayReachedLight( &shadow) ) continue;
 
-        /** Direct color using Phong Model **/
+#if 0
+        /** Direct color using Phong **/
         r32 lambertian = Max( Dot(shadow.dir, intersection.normal), 0.0f);
         r32 specAngle = 0.0f;
 
@@ -328,14 +328,21 @@ DirectLighting(vec3 view, Intersection intersection, Material *material )
             vec3 reflectDir = Reflect( -shadow.dir, intersection.normal);
             specAngle = Max( Dot(reflectDir, view), 0.0f);
         }
+#else
+        r32 lambertian = Dot(shadow.dir, intersection.normal);
+        r32 specAngle = 0.0f;
 
+        vec3 reflectDir = Reflect( -shadow.dir, intersection.normal);
+        specAngle = Dot(reflectDir, view);
+#endif
 
-        diffuse += material->diffuse * (lambertian * lights[i].diffuseColor ) ;
-        specular += material->specular * (pow( specAngle, material->shininess) *
-                                                     lights[i].specularColor);
+        diffuse += lambertian * lights[i].diffuseColor;
+        specular +=  pow( specAngle, material->shininess) * lights[i].specularColor;
     }
 
-    color = ambient + diffuse + specular;
+    color = ambient_color * material->diffuse +
+            diffuse * material->diffuse +
+            specular * material->specular;
     return color;
 }
 
