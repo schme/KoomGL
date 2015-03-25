@@ -299,48 +299,40 @@ RayObjectsIntersect( Ray *ray, Intersection *inters)
 }
 
 
+/**
+ * From Wikipedia - Phong reflection model:
+ * "each term should only be included if the term's dot product is positive.
+ * (Additionally, the specular term should only be included if the dot product
+ * of the diffuse term is positive.)"
+ */
 vec3
 DirectLighting(vec3 view, Intersection intersection, Material *material )
 {
-    vec3 color = {};
-
-    vec3 diffuse = {};
-    vec3 specular = {};
+    vec3 diffuse = Vec3(0.0f);
+    vec3 specular = Vec3(0.0f);
 
     for (u32 i = 0; i < numLights; ++i)
     {
-        Intersection sinters = InitIntersection();
 
-        Ray shadow;
-        shadow.pos = intersection.point;
-        shadow.dir = lights[i].pos - intersection.point;
-        shadow.length = Length(shadow.dir);
-        shadow.dir = Norm(shadow.dir);
+        Ray light;
+        light.pos = intersection.point;
+        light.dir = lights[i].pos - intersection.point;
+        light.length = Length(light.dir);
+        light.dir = Norm(light.dir);
 
-        //if( !ShadowRayReachedLight( &shadow) ) continue;
+        if( !ShadowRayReachedLight( &light) ) continue;
 
-#if 0
-        /** Direct color using Phong **/
-        r32 lambertian = Max( Dot(shadow.dir, intersection.normal), 0.0f);
-        r32 specAngle = 0.0f;
-
-        if( lambertian > 0.0f) {
-            vec3 reflectDir = Reflect( -shadow.dir, intersection.normal);
-            specAngle = Max( Dot(reflectDir, view), 0.0f);
-        }
-#else
-        r32 lambertian = Dot(shadow.dir, intersection.normal);
-        r32 specAngle = 0.0f;
-
-        vec3 reflectDir = Reflect( -shadow.dir, intersection.normal);
-        specAngle = Dot(reflectDir, view);
-#endif
+        r32 lambertian = Dot( light.dir, intersection.normal);
+        vec3 reflectDir = Reflect( light.dir, intersection.normal);
+        r32 specAngle = Dot(reflectDir, view);
 
         diffuse += lambertian * lights[i].diffuseColor;
-        specular +=  pow( specAngle, material->shininess) * lights[i].specularColor;
+        if( specAngle > 0.0f) {
+            specular += Pow( specAngle, material->shininess) * lights[i].specularColor;
+        }
     }
 
-    color = ambient_color * material->diffuse +
+    vec3 color = ambient_color * material->diffuse +
             diffuse * material->diffuse +
             specular * material->specular;
     return color;
@@ -358,7 +350,6 @@ RayTrace( Ray *ray)
 
     Intersection inters = InitIntersection();
 
-    vec3 color_direct = {};
     Hit hit = RayObjectsIntersect( ray, &inters);
 
     if( hit.type != HitType::None) {
@@ -378,7 +369,7 @@ RayTrace( Ray *ray)
             } break;
         }
 
-        color_direct = DirectLighting( ray->dir, inters, material);
+        vec3 color_direct = DirectLighting( -ray->dir, inters, material);
         *ray->pixel += ray->attenuation * color_direct;
 
 
