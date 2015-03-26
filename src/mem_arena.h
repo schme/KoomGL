@@ -4,7 +4,7 @@
 #include <assert.h>
 #include "types.h"
 
-struct MemoryStack {
+struct MemoryArena {
     b32 isInitialized;
     u64 stackSize;
     void *memoryPool;
@@ -12,7 +12,7 @@ struct MemoryStack {
 };
 
 /** initialises to zero before handing it out */
-void* popMemoryStack(MemoryStack* memory, u64 bytes);
-void pushMemoryStack(MemoryStack* memory, u64 bytes);
+void* popMemoryArena(MemoryArena* memory, u64 bytes);
+void pushMemoryArena(MemoryArena* memory, u64 bytes);
 
 #endif // MEMORYSTACK_H_

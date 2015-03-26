@@ -16,6 +16,10 @@
 #include "types.h"
 #include <math.h>
 
+#include <xmmintrin.h>
+
+
+
 union vec2 {
     struct {
         r32 x, y;
@@ -43,6 +47,13 @@ union vec4 {
     };
     r32 e[4];
 };
+
+/**************************
+ *  forward declarations  *
+ **************************/
+
+r32 InvSqrt_SSE( r32 a);
+vec3 InvSqrt_SSE( vec3 a);
 
 
 /***********************
@@ -297,7 +308,6 @@ operator + (vec3 a, vec3 b) {
     return v;
 }
 
-
 inline vec3
 operator - (vec3 a, vec3 b) {
 
@@ -308,30 +318,17 @@ operator - (vec3 a, vec3 b) {
     return v;
 }
 
-
 inline vec3 &
 operator += (vec3 &a, vec3 b) {
-
     a = a + b;
     return a;
 }
 
-
 inline r32
 Dot( vec3 a, vec3 b) {
-
     r32 r = a.x*b.x + a.y*b.y + a.z*b.z;
     return r;
 }
-
-
-inline vec3
-Norm( vec3 v) {
-    vec3 result;
-    result = (1.0f/Sqrt(v.x*v.x + v.y*v.y + v.z*v.z)) * v;
-    return result;
-}
-
 
 inline r32
 LengthSq( vec3 v) {
@@ -347,6 +344,12 @@ Length( vec3 v) {
     return result;
 }
 
+inline vec3
+Norm( vec3 v) {
+    vec3 result;
+    result = 1.0f/Sqrt((LengthSq(v))) * v;
+    return result;
+}
 
 inline vec3
 Reflect( vec3 incident, vec3 normal) {
@@ -369,9 +372,17 @@ Vec4( r32 a) {
 }
 
 inline vec4
-Vec4( i32 a) {
-    vec4 v = Vec4((r32)a);
+Vec4( r32 x, r32 y, r32 z, r32 w) {
+    vec4 v{
+        {x, y, z, w}
+    };
     return v;
+}
+
+
+inline vec4
+Vec4( vec3 v, r32 a) {
+    return Vec4( v.x, v.y, v.z, a);
 }
 
 inline vec4
@@ -421,7 +432,6 @@ operator + (vec4 a, vec4 b) {
     return v;
 }
 
-
 inline vec4
 operator - (vec4 a, vec4 b) {
 
@@ -433,7 +443,6 @@ operator - (vec4 a, vec4 b) {
     return v;
 }
 
-
 inline vec4 &
 operator += (vec4 &a, vec4 b) {
 
@@ -441,14 +450,12 @@ operator += (vec4 &a, vec4 b) {
     return a;
 }
 
-
 inline r32
 Dot( vec4 a, vec4 b) {
 
     r32 r = a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.z;
     return r;
 }
-
 
 inline vec4
 Norm( vec4 a) {
@@ -458,7 +465,32 @@ Norm( vec4 a) {
 }
 
 
-#ifdef KS_MATH_IMPLEMENT
+/****************
+ *  intrinsics  *
+ ****************/
 
-#endif
+
+/**
+ * NOTE(kasper): make sure inlining doesn't goof this
+ */
+inline r32
+InvSqrt_SSE( r32 a) {
+    __m128 m;
+    m = _mm_load_ss( &a);
+    m = _mm_rsqrt_ss( m );
+    _mm_store_ss( &a, m);
+    return a;
+}
+
+inline vec3
+InvSqrt_SSE( vec3 v) {
+    __m128 m;
+    vec4 temp = Vec4( v, 0.0f);
+    m = _mm_load_ps( temp.e );
+    m = _mm_rsqrt_ps( m );
+    _mm_store_ps( temp.e, m);
+    return Vec3( temp.x, temp.y, temp.z );
+}
+
+
 #endif // KS_MATH_H_

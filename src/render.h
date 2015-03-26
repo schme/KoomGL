@@ -15,7 +15,6 @@ static const u32 max_recursion_depth = 6;
 static const r32 max_clip = 100000.0f;
 
 
-
 struct Plane {
     vec3 normal;
     r32 pos;

@@ -18,7 +18,7 @@ typedef float r64;
 
 typedef uint32_t b32;
 
-#include "memorystack.h"
+#include "mem_arena.h"
 
 
 #define ArrCount(a) sizeof(a) / sizeof(*(a))
@@ -59,7 +59,7 @@ struct GameInput {
 };
 
 
-void gameInit( MemoryStack *);
+void gameInit( MemoryArena *);
 void gameUpdateAndRender( GameInput);
 void resize( int w, int h);
 

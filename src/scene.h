@@ -1,7 +1,7 @@
 #ifndef SCENE_H_
 #define SCENE_H_
 
-#include "game.h"
+#include "render.h"
 /*
  * TODO(kasper): Move into a separate file which is read at runtime
  */
@@ -29,7 +29,7 @@ Material scene_materials[] =
         Vec3( 1.0f, 1.0f, 1.0f ),
         4.0f, 1.4f
     },
-    {   Vec3( 0.7f, 0.5f, 0.1f ),
+    {   Vec3( 0.70f, 0.50f, 0.10f ),
         Vec3( 0.10f, 0.10f, 0.10f ),
         50.0f, 1.4f
 

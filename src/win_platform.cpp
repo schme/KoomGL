@@ -1,5 +1,5 @@
 #include "win_platform.h"
-#include "game.h"
+#include "render.h"
 
 #include <windows.h>
 #include <stdio.h>
@@ -473,7 +473,7 @@ CALLBACK WinMain(   HINSTANCE Instance,
     u64 LastCycleCount = __rdtsc();
     r64 msPerFrame = 0.0f;
 
-    MemoryStack gameMemory = {};
+    MemoryArena gameMemory = {};
     gameMemory.stackSize = memoryStackSize;
     gameMemory.memoryPool = VirtualAlloc( 0, gameMemory.stackSize,
                             MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE);

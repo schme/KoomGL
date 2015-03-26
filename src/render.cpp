@@ -1,4 +1,4 @@
-#include "game.h"
+#include "render.h"
 #include "scene.h"
 
 #include "ks_glutils.h"
@@ -7,7 +7,7 @@
 /** For handling PPM files */
 #include <stdlib.h>
 
-static MemoryStack *memory;
+static MemoryArena *memory;
 
 static vec3 *draw_buffer;
 static u32 buffer_size;
@@ -340,7 +340,7 @@ DirectLighting(vec3 view, Intersection intersection, Material *material )
 
 
 void
-RayTrace( Ray *ray)
+TraceRay( Ray *ray)
 {
     if( ray->rec_depth <= 0 ||
         Length(ray->attenuation) < ray_attenuation_clip)
@@ -370,8 +370,6 @@ RayTrace( Ray *ray)
         }
 
         vec3 color_direct = DirectLighting( -ray->dir, inters, material);
-        *ray->pixel += ray->attenuation * color_direct;
-
 
         Ray reflected;
         reflected.pixel = ray->pixel;
@@ -380,7 +378,7 @@ RayTrace( Ray *ray)
         reflected.dir = Reflect( -ray->dir, inters.normal);
         reflected.pos = inters.point + (reflected.dir * inters.distance * eps);
         reflected.rec_depth = ray->rec_depth - 1;
-        RayTrace( &reflected );
+        TraceRay( &reflected );
 
 
         Ray transmitted;
@@ -412,8 +410,10 @@ RayTrace( Ray *ray)
             transmitted.pixel = ray->pixel;
             transmitted.pos = inters.point + (transmitted.dir * inters.distance * eps);
             transmitted.rec_depth = ray->rec_depth - 1;
-            RayTrace( &transmitted );
+            TraceRay( &transmitted );
+            *ray->pixel += ray->attenuation * color_direct;
         }
+
     }
 }
 
@@ -449,6 +449,13 @@ TraceFrame()
         }
     }
 
+    r32 gain = 1.0f;
+    r32 gamma = 2.2f;
+
+    /**
+     * pseudonym73 | cout = cin / (1 + luma(cin) / range)
+     */
+
     u32 index = 0;
     for (int j = 0; j < buf_height; ++j)
     {
@@ -476,21 +483,24 @@ TraceFrame()
                 ray.rec_depth = max_recursion_depth;
                 ray.refractive_index = 1.0f;    // air
 
-                RayTrace( &ray);
+                TraceRay( &ray);
             }
-            (*pixel) = (*pixel) / (r32)sample_count;
+            *pixel = (*pixel) / (r32)sample_count;
+            //(*pixel).r = Pow((*pixel).r * gain, 1.0f / gamma);
+            //(*pixel).g = Pow((*pixel).g * gain, 1.0f / gamma);
+            //(*pixel).b = Pow((*pixel).b * gain, 1.0f / gamma);
         }
     }
 
 }
 
 
-void gameInit(MemoryStack *ms)
+void gameInit(MemoryArena *ms)
 {
     memory = ms;
 
     buffer_size = buf_width * buf_height * sizeof(vec3);
-    draw_buffer = (vec3*)popMemoryStack( memory, buffer_size);
+    draw_buffer = (vec3*)popMemoryArena( memory, buffer_size);
 
     defineScene();
     renderInit();
